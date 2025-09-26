@@ -1,0 +1,27 @@
+name: Bot de Postagens
+
+on:
+  schedule:
+    # executa todo dia às 18:00 UTC (ajuste conforme necessário)
+    - cron: "0 18 * * *"
+  workflow_dispatch: # permite rodar manualmente também
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências
+        run: |
+          pip install schedule
+
+      - name: Rodar script
+        run: |
+          python bot_postagens.py
