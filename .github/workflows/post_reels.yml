@@ -3,7 +3,7 @@ name: Upload Reels
 on:
   workflow_dispatch: # roda manualmente
   schedule:
-    - cron: "0 18 * * *" # exemplo: todo dia às 18h UTC
+    - cron: "0 23 * * *" # roda todo dia às 20h do Brasil (23h UTC)
 
 jobs:
   upload:
@@ -20,18 +20,21 @@ jobs:
             sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
           echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | \
             sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install ngrok
+          sudo apt update && sudo apt install -y ngrok
 
       - name: Configurar Ngrok
         run: ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
 
-      - name: Criar pastas
-        run: mkdir -p videos/pending videos/posted
+      - name: Criar pastas e exemplo de vídeo
+        run: |
+          mkdir -p videos/pending videos/posted
+          # Se não tiver vídeo, cria um falso só para testar
+          if [ ! -f videos/pending/download.mp4 ]; then
+            echo "teste" > videos/pending/download.mp4
+          fi
 
       - name: Rodar script de upload
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
         run: python3 upload_instagram.py
-        
-
