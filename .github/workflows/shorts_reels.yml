@@ -1,0 +1,46 @@
+name: Upload Reels e Shorts
+
+on:
+  workflow_dispatch: # manual
+  schedule:
+    - cron: "0 23 * * *" # 20h do Brasil (23h UTC)
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Instalar dependências
+        run: |
+          pip install requests google-auth google-auth-oauthlib google-api-python-client
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
+            sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | \
+            sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install -y ngrok
+
+      - name: Configurar Ngrok
+        run: ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
+
+      - name: Criar pastas e vídeo de exemplo
+        run: |
+          mkdir -p videos/pending videos/posted
+          if [ ! -f videos/pending/download.mp4 ]; then
+            echo "teste" > videos/pending/download.mp4
+          fi
+
+      - name: Criar client_secret.json
+        run: |
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' > client_secret.json
+
+      - name: Rodar upload Instagram
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: python3 upload_instagram.py
+
+      - name: Rodar upload YouTube
+        run: python3 upload_youtube.py
