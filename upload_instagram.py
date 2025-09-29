@@ -2,14 +2,23 @@ import os
 import requests
 import time
 import shutil
+import subprocess
 
 ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
 IG_USER_ID = os.getenv("IG_USER_ID")
-BASE_URL = "https://Ths-S.github.io/bot-postagens/videos/pending/"  # ajuste para seu repo
-
 CAPTION = "🚀 Postagem automática via API"
+
 PENDING_DIR = "videos/pending"
 POSTED_DIR = "videos/posted"
+
+def start_ngrok():
+    # Inicia ngrok apontando para o servidor HTTP local na porta 8000
+    ngrok = subprocess.Popen(["ngrok", "http", "8000"], stdout=subprocess.PIPE)
+    time.sleep(5)  # espera o ngrok subir
+
+    # Pega a URL pública do ngrok pela API local
+    url = requests.get("http://127.0.0.1:4040/api/tunnels").json()["tunnels"][0]["public_url"]
+    return url
 
 def upload_reels(video_url):
     url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media"
@@ -30,17 +39,20 @@ def publish_reels(container_id):
     return requests.post(url, data=data).json()
 
 if __name__ == "__main__":
-    # pega o primeiro vídeo na pasta
     files = sorted(os.listdir(PENDING_DIR))
     if not files:
         print("⚠️ Nenhum vídeo para postar.")
         exit(0)
 
     video_file = files[0]
-    video_url = BASE_URL + video_file
     print(f"➡️ Preparando vídeo: {video_file}")
 
-    # cria container
+    # inicia servidor HTTP local para servir os vídeos
+    subprocess.Popen(["python3", "-m", "http.server", "8000", "--directory", PENDING_DIR])
+    base_url = start_ngrok()
+    video_url = f"{base_url}/{video_file}"
+    print(f"🌍 URL pública gerada: {video_url}")
+
     upload_resp = upload_reels(video_url)
     print("Upload response:", upload_resp)
 
@@ -54,7 +66,6 @@ if __name__ == "__main__":
         print("Publish response:", publish_resp)
 
         if "id" in publish_resp:
-            # mover arquivo para posted/
             src = os.path.join(PENDING_DIR, video_file)
             dst = os.path.join(POSTED_DIR, video_file)
             shutil.move(src, dst)
