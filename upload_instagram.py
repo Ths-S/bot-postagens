@@ -11,14 +11,19 @@ CAPTION = "🚀 Postagem automática via API"
 PENDING_DIR = "videos/pending"
 POSTED_DIR = "videos/posted"
 
-def start_ngrok():
-    # Inicia ngrok apontando para o servidor HTTP local na porta 8000
-    ngrok = subprocess.Popen(["ngrok", "http", "8000"], stdout=subprocess.PIPE)
-    time.sleep(5)  # espera o ngrok subir
 
-    # Pega a URL pública do ngrok pela API local
-    url = requests.get("http://127.0.0.1:4040/api/tunnels").json()["tunnels"][0]["public_url"]
-    return url
+def start_ngrok():
+    """Inicia ngrok e retorna a URL pública"""
+    ngrok = subprocess.Popen(["ngrok", "http", "8000"], stdout=subprocess.PIPE)
+    time.sleep(5)  # tempo para o ngrok subir
+
+    try:
+        url = requests.get("http://127.0.0.1:4040/api/tunnels").json()["tunnels"][0]["public_url"]
+        return url
+    except Exception as e:
+        print("❌ Erro ao iniciar ngrok:", e)
+        exit(1)
+
 
 def upload_reels(video_url):
     url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media"
@@ -30,6 +35,7 @@ def upload_reels(video_url):
     }
     return requests.post(url, data=data).json()
 
+
 def publish_reels(container_id):
     url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media_publish"
     data = {
@@ -38,14 +44,28 @@ def publish_reels(container_id):
     }
     return requests.post(url, data=data).json()
 
+
 if __name__ == "__main__":
+    if not os.path.exists(PENDING_DIR):
+        print(f"⚠️ Pasta {PENDING_DIR} não existe.")
+        exit(0)
+
     files = sorted(os.listdir(PENDING_DIR))
+    print("📂 Arquivos encontrados em pending:", files)
+
     if not files:
         print("⚠️ Nenhum vídeo para postar.")
         exit(0)
 
     video_file = files[0]
+    video_path = os.path.join(PENDING_DIR, video_file)
+
+    if not os.path.isfile(video_path):
+        print(f"❌ Arquivo não encontrado: {video_path}")
+        exit(1)
+
     print(f"➡️ Preparando vídeo: {video_file}")
+    print(f"📍 Caminho absoluto: {os.path.abspath(video_path)}")
 
     # inicia servidor HTTP local para servir os vídeos
     subprocess.Popen(["python3", "-m", "http.server", "8000", "--directory", PENDING_DIR])
@@ -68,6 +88,7 @@ if __name__ == "__main__":
         if "id" in publish_resp:
             src = os.path.join(PENDING_DIR, video_file)
             dst = os.path.join(POSTED_DIR, video_file)
+            os.makedirs(POSTED_DIR, exist_ok=True)
             shutil.move(src, dst)
             print(f"✅ Vídeo {video_file} postado e movido para {POSTED_DIR}")
         else:
