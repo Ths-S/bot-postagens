@@ -2,7 +2,7 @@ name: Post Instagram Reels
 
 on:
   schedule:
-    - cron: "0 15 * * *"   # todos os dias às 12h (Brasília = 15h UTC -3)
+    - cron: "0 15 * * *"
   workflow_dispatch:
 
 jobs:
@@ -10,31 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Listar arquivos
-        run: ls -R
-
       - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
       - name: Instalar dependências
-        run: pip install requests
+        run: |
+          pip install requests
+          sudo snap install ngrok
 
       - name: Rodar script de upload
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
-        run: python upload_instagram.py
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: |
+          ngrok config add-authtoken $NGROK_AUTHTOKEN
+          python upload_instagram.py
+
+      - name: Garantir que a pasta posted exista
+        run: mkdir -p videos/posted
 
       - name: Commit mover vídeos para posted/
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add videos/posted/
-          git add videos/pending/
-          git commit -m "Move vídeo postado"
+          git add videos/pending/ videos/posted/ || true
+          git commit -m "Move vídeo postado" || echo "Nada para commitar"
           git push
