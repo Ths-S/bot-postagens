@@ -53,36 +53,28 @@ def login_tiktok(driver):
     WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     rnd_sleep(2, 4)
 
-    try:
-        # Campo email/username
-        email_input = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder*='Email']"))
-        )
-        email_input.clear()
-        email_input.send_keys(USERNAME)
-        rnd_sleep(1, 2)
+    email_input = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='username']"))
+    )
+    email_input.clear()
+    email_input.send_keys(USERNAME)
+    rnd_sleep(1, 2)
 
-        pwd_input = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='password']"))
-        )
-        pwd_input.clear()
-        pwd_input.send_keys(PASSWORD)
-        rnd_sleep(1, 2)
+    pwd_input = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='password']"))
+    )
+    pwd_input.clear()
+    pwd_input.send_keys(PASSWORD)
+    rnd_sleep(1, 2)
 
-        # Botão login
-        login_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Log in') or contains(., 'Entrar')]"))
-        )
-        login_btn.click()
-        rnd_sleep(5, 8)
+    login_btn = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Log in') or contains(., 'Entrar')]"))
+    )
+    login_btn.click()
+    rnd_sleep(5, 8)
 
-        # Espera pós-login
-        WebDriverWait(driver, 30).until(EC.url_contains("tiktok.com"))
-        print("[login] login completed, current URL:", driver.current_url)
-    except Exception as e:
-        print("[login] failed:", e)
-        save_debug(driver, "login_fail")
-        raise
+    WebDriverWait(driver, 30).until(EC.url_contains("tiktok.com"))
+    print("[login] login completed, current URL:", driver.current_url)
 
 def upload_one_video(driver, video_path):
     driver.get("https://www.tiktok.com/tiktokstudio/upload?from=creator_center")
@@ -90,23 +82,25 @@ def upload_one_video(driver, video_path):
     rnd_sleep(2, 4)
 
     try:
-        # Input file
         file_input = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
         )
         abs_path = os.path.abspath(video_path)
         file_input.send_keys(abs_path)
         rnd_sleep(5, 8)
+    except Exception as e:
+        print(f"[upload] failed to select file {video_path}: {e}")
+        save_debug(driver, "upload_fail")
+        return
 
-        # Legenda
-        try:
-            caption_area = driver.find_element(By.XPATH, "//textarea[contains(@placeholder,'caption') or contains(@placeholder,'legenda')]")
-            caption_area.clear()
-            caption_area.send_keys("Automated upload - teste")
-        except:
-            print("[upload] caption not found (continuing)")
+    try:
+        caption_area = driver.find_element(By.XPATH, "//textarea[contains(@placeholder,'caption') or contains(@placeholder,'legenda')]")
+        caption_area.clear()
+        caption_area.send_keys("Automated upload - teste")
+    except:
+        print("[upload] caption not found (continuing)")
 
-        # Botão publicar
+    try:
         publish_btn = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Post') or contains(., 'Publicar')]"))
         )
@@ -114,32 +108,31 @@ def upload_one_video(driver, video_path):
         rnd_sleep(5, 10)
         print(f"[upload] video {video_path} uploaded")
     except Exception as e:
-        print(f"[upload] failed for {video_path}: {e}")
-        save_debug(driver, "upload_fail")
-
-def get_all_videos(folder):
-    video_files = []
-    for root, _, files in os.walk(folder):
-        for f in files:
-            if f.lower().endswith(".mp4"):
-                video_files.append(os.path.join(root, f))
-    return sorted(video_files)
+        print(f"[upload] failed to publish video {video_path}: {e}")
+        save_debug(driver, "publish_fail")
 
 def main():
     if not USERNAME or not PASSWORD:
         print("[error] TIKTOK_USERNAME and TIKTOK_PASSWORD env vars required.")
         return
 
-    print("Current dir:", os.getcwd())
-    print("Video folder exists:", os.path.exists(VIDEO_FOLDER))
-    if os.path.exists(VIDEO_FOLDER):
-        print("Files in video folder:", os.listdir(VIDEO_FOLDER))
+    if not os.path.exists(VIDEO_FOLDER):
+        os.makedirs(VIDEO_FOLDER)
+        print(f"[main] created missing folder '{VIDEO_FOLDER}'")
 
     driver = start_driver()
     try:
         login_tiktok(driver)
 
-        videos = get_all_videos(VIDEO_FOLDER)
+        videos = [
+            os.path.join(VIDEO_FOLDER, f)
+            for f in sorted(os.listdir(VIDEO_FOLDER))
+            if f.lower().endswith(".mp4")
+        ]
+        if not videos:
+            print(f"[main] no mp4 files found in '{VIDEO_FOLDER}'. Place your videos there.")
+            return
+
         print(f"[main] found {len(videos)} mp4 files in {VIDEO_FOLDER}")
 
         for v in videos:
