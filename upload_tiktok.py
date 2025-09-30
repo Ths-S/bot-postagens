@@ -1,6 +1,11 @@
-from TikTokApi import TikTokApi
 import os
 import sys
+
+try:
+    from TikTokApi import TikTokApi
+except ModuleNotFoundError:
+    print("[ERROR] TikTokApi module not found. Make sure to run 'pip install -r requirements.txt'")
+    sys.exit(1)
 
 # Variáveis de ambiente definidas no GitHub Actions
 SESSIONID = os.getenv("TIKTOK_SESSIONID")
