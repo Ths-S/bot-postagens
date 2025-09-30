@@ -1,1 +1,3 @@
-TikTok-Api
+TikTok-Api>=5.9.0
+requests
+aiohttp
