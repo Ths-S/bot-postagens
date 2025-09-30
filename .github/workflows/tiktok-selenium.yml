@@ -3,6 +3,10 @@ name: TikTok Selenium Upload
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   upload:
     runs-on: ubuntu-latest
@@ -15,29 +19,48 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install system deps (wget, unzip, xvfb)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xvfb libnss3 libxss1 libasound2
+
+      - name: Install Google Chrome (stable) via .deb (avoids libgconf issues)
+        run: |
+          wget -q -O google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt-get install -y ./google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+          google-chrome --version
+
+      - name: Prepare artifacts dir
+        run: mkdir -p artifacts
+
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install selenium webdriver-manager
 
-      - name: Install Chrome (stable)
-        run: |
-          sudo apt update
-          sudo apt install -y wget unzip xvfb libnss3 libgconf-2-4
-          wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i chrome.deb || sudo apt --fix-broken -y install
-          google-chrome --version
+      - name: Show files (for debug)
+        run: ls -la
 
-      - name: Run script
+      - name: Run upload script (Xvfb)
         env:
           TIKTOK_USERNAME: ${{ secrets.TIKTOK_USERNAME }}
           TIKTOK_PASSWORD: ${{ secrets.TIKTOK_PASSWORD }}
-          HEADLESS: ${{ secrets.HEADLESS }}  # "true" or "false"
+          HEADLESS: ${{ secrets.HEADLESS }} # optional: "true" or "false"
         run: |
-          # optional: set DISPLAY for chrome in headless CI
           export DISPLAY=:99
           Xvfb :99 -screen 0 1280x800x24 > /tmp/xvfb.log 2>&1 &
-
-          ls -la
-          echo "Running upload_tiktok.py (logs will print below)..."
+          echo "[workflow] waiting for Xvfb..."
+          sleep 2
           python upload_tiktok.py
+        continue-on-error: true
+
+      - name: Upload debug artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-debug-artifacts
+          path: |
+            artifacts/*
+            debug_*.png
+            debug_*.html
+            /tmp/xvfb.log
+
