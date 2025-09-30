@@ -53,64 +53,69 @@ def login_tiktok(driver):
     WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     rnd_sleep(2, 4)
 
-    # Email/username
-    email_input = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='username']"))
-    )
-    email_input.clear()
-    email_input.send_keys(USERNAME)
-    rnd_sleep(1, 2)
+    try:
+        # Novo seletor para email/username (mais confiável)
+        email_input = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder*='Email']"))
+        )
+        email_input.clear()
+        email_input.send_keys(USERNAME)
+        rnd_sleep(1, 2)
 
-    # Password
-    pwd_input = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='password']"))
-    )
-    pwd_input.clear()
-    pwd_input.send_keys(PASSWORD)
-    rnd_sleep(1, 2)
+        pwd_input = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='password']"))
+        )
+        pwd_input.clear()
+        pwd_input.send_keys(PASSWORD)
+        rnd_sleep(1, 2)
 
-    # Botão login
-    login_btn = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Log in') or contains(., 'Entrar')]"))
-    )
-    login_btn.click()
-    rnd_sleep(5, 8)
+        # Botão login
+        login_btn = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Log in') or contains(., 'Entrar')]"))
+        )
+        login_btn.click()
+        rnd_sleep(5, 8)
 
-    # Espera pós-login
-    WebDriverWait(driver, 30).until(EC.url_contains("tiktok.com"))
-    print("[login] login completed, current URL:", driver.current_url)
+        # Espera pós-login
+        WebDriverWait(driver, 30).until(EC.url_contains("tiktok.com"))
+        print("[login] login completed, current URL:", driver.current_url)
+    except Exception as e:
+        print("[login] failed:", e)
+        save_debug(driver, "login_fail")
+        raise
 
 def upload_one_video(driver, video_path):
     driver.get("https://www.tiktok.com/tiktokstudio/upload?from=creator_center")
     WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     rnd_sleep(2, 4)
 
-    # Botão "Selecionar vídeo"
-    upload_btn = WebDriverWait(driver, 15).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "button[data-e2e='select_video_button']"))
-    )
-
-    # Usar input[type=file] escondido dentro do botão
-    file_input = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
-    abs_path = os.path.abspath(video_path)
-    file_input.send_keys(abs_path)
-    rnd_sleep(5, 8)
-
-    # Legenda
     try:
-        caption_area = driver.find_element(By.XPATH, "//textarea[contains(@placeholder,'caption') or contains(@placeholder,'legenda')]")
-        caption_area.clear()
-        caption_area.send_keys("Automated upload - teste")
-    except:
-        print("[upload] caption not found (continuing)")
+        # Botão "Selecionar vídeo" e input[type=file]
+        file_input = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
+        )
+        abs_path = os.path.abspath(video_path)
+        file_input.send_keys(abs_path)
+        rnd_sleep(5, 8)
 
-    # Botão publicar
-    publish_btn = WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Post') or contains(., 'Publicar')]"))
-    )
-    publish_btn.click()
-    rnd_sleep(5, 10)
-    print(f"[upload] video {video_path} uploaded")
+        # Legenda
+        try:
+            caption_area = driver.find_element(By.XPATH, "//textarea[contains(@placeholder,'caption') or contains(@placeholder,'legenda')]")
+            caption_area.clear()
+            caption_area.send_keys("Automated upload - teste")
+        except:
+            print("[upload] caption not found (continuing)")
+
+        # Botão publicar
+        publish_btn = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Post') or contains(., 'Publicar')]"))
+        )
+        publish_btn.click()
+        rnd_sleep(5, 10)
+        print(f"[upload] video {video_path} uploaded")
+    except Exception as e:
+        print(f"[upload] failed for {video_path}: {e}")
+        save_debug(driver, "upload_fail")
 
 def main():
     if not USERNAME or not PASSWORD:
