@@ -2,23 +2,38 @@ name: Upload YouTube
 
 on:
   workflow_dispatch:
+    inputs:
+      video_path:
+        description: 'Caminho do vídeo'
+        required: true
+        default: 'videos/video.mp4'
 
 jobs:
   upload:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repositório
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
       - name: Instalar dependências
         run: |
-          python3 -m pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install google-auth google-auth-oauthlib google-api-python-client
 
-      - name: Criar client_secret.json
-        run: echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' > client_secret.json
+      - name: Criar pasta de vídeos
+        run: mkdir -p videos
 
-      - name: Criar token.pickle
-        run: echo '${{ secrets.YOUTUBE_TOKEN_PICKLE }}' | base64 --decode > token.pickle
+      - name: Copiar vídeo para pasta
+        run: cp ${{ github.event.inputs.video_path }} videos/video.mp4
 
-      - name: Rodar upload YouTube
-        run: python3 upload_youtube.py
+      - name: Executar upload
+        env:
+          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
+        run: python upload_youtube.py
