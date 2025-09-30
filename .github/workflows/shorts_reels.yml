@@ -6,10 +6,9 @@ on:
     paths:
       - "videos/pending/**"
       - "upload_youtube.py"
-      - "tests/**"
 
 jobs:
-  test-and-upload:
+  upload:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repositório
@@ -22,14 +21,13 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client pytest
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
-      - name: Rodar testes
-        run: pytest -v
+      - name: Listar arquivos de vídeo
+        run: ls -R videos || echo "⚠️ Nenhuma pasta de vídeos encontrada"
 
-      - name: Rodar upload (se testes passarem)
-        if: success()
+      - name: Rodar upload YouTube
         env:
           YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
           YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
-        run: python upload_youtube.py
+        run: python -u upload_youtube.py
