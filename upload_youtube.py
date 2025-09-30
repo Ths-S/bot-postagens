@@ -1,39 +1,37 @@
 import os
 import pickle
-import google_auth_oauthlib.flow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 import googleapiclient.discovery
 import googleapiclient.http
 
 VIDEO_FOLDER = "videos"
 CLIENT_SECRETS_FILE = "client_secret.json"
-TOKEN_FILE = "token.pickle"  # arquivo para salvar credenciais
+TOKEN_FILE = "token.pickle"
+
+SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 def get_authenticated_service():
-    scopes = ["https://www.googleapis.com/auth/youtube.upload"]
-    credentials = None
-
-    # Tenta carregar token salvo
+    creds = None
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, "rb") as f:
-            credentials = pickle.load(f)
+            creds = pickle.load(f)
 
-    # Se não existir ou estiver expirado, faz login
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
+    # Se token expirou, atualiza automaticamente usando refresh token
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
         else:
-            flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-                CLIENT_SECRETS_FILE, scopes)
-            credentials = flow.run_local_server(port=0)
-        # Salva o token para próximos usos
-        with open(TOKEN_FILE, "wb") as f:
-            pickle.dump(credentials, f)
+            raise Exception("Token inválido ou ausente. Gere um refresh token e salve no GitHub Secrets.")
 
-    return googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
+        # Salva novamente para próximos usos
+        with open(TOKEN_FILE, "wb") as f:
+            pickle.dump(creds, f)
+
+    return googleapiclient.discovery.build("youtube", "v3", credentials=creds)
 
 def upload_video(file_path, title, description, tags=None, category_id="22", privacy="public"):
     youtube = get_authenticated_service()
-
     request_body = {
         "snippet": {
             "title": title,
@@ -58,10 +56,9 @@ def upload_video(file_path, title, description, tags=None, category_id="22", pri
 if __name__ == "__main__":
     for file in os.listdir(VIDEO_FOLDER):
         if file.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
-            video_path = os.path.join(VIDEO_FOLDER, file)
             upload_video(
-                file_path=video_path,
-                title="Meu Short automático",
+                file_path=os.path.join(VIDEO_FOLDER, file),
+                title="Meu Short Automático",
                 description="Publicado automaticamente via API",
                 tags=["shorts", "python", "automação"]
             )
