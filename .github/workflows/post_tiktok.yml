@@ -27,4 +27,4 @@ jobs:
           VIDEO_PATH: "videos/video.mp4"  # ajuste o caminho do vídeo no repositório
           DESCRIPTION: "Automated upload from GitHub Actions"
         run: |
-          python upload_tiktok_api.py
+          python upload_tiktok.py
