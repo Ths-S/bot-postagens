@@ -1,4 +1,4 @@
-# upload_tiktok.py
+ # upload_tiktok.py
 # Requer: pip install selenium webdriver-manager
 
 import os
@@ -270,3 +270,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
