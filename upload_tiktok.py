@@ -54,7 +54,7 @@ def login_tiktok(driver):
     rnd_sleep(2, 4)
 
     try:
-        # Novo seletor para email/username (mais confiável)
+        # Campo email/username
         email_input = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder*='Email']"))
         )
@@ -90,7 +90,7 @@ def upload_one_video(driver, video_path):
     rnd_sleep(2, 4)
 
     try:
-        # Botão "Selecionar vídeo" e input[type=file]
+        # Input file
         file_input = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
         )
@@ -117,16 +117,29 @@ def upload_one_video(driver, video_path):
         print(f"[upload] failed for {video_path}: {e}")
         save_debug(driver, "upload_fail")
 
+def get_all_videos(folder):
+    video_files = []
+    for root, _, files in os.walk(folder):
+        for f in files:
+            if f.lower().endswith(".mp4"):
+                video_files.append(os.path.join(root, f))
+    return sorted(video_files)
+
 def main():
     if not USERNAME or not PASSWORD:
         print("[error] TIKTOK_USERNAME and TIKTOK_PASSWORD env vars required.")
         return
 
+    print("Current dir:", os.getcwd())
+    print("Video folder exists:", os.path.exists(VIDEO_FOLDER))
+    if os.path.exists(VIDEO_FOLDER):
+        print("Files in video folder:", os.listdir(VIDEO_FOLDER))
+
     driver = start_driver()
     try:
         login_tiktok(driver)
 
-        videos = [os.path.join(VIDEO_FOLDER, f) for f in sorted(os.listdir(VIDEO_FOLDER)) if f.lower().endswith(".mp4")]
+        videos = get_all_videos(VIDEO_FOLDER)
         print(f"[main] found {len(videos)} mp4 files in {VIDEO_FOLDER}")
 
         for v in videos:
