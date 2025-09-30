@@ -1,44 +1,35 @@
-name: Upload Reels e Shorts
+name: Upload YouTube Video
 
 on:
-  workflow_dispatch: # manual
-  schedule:
-    - cron: "0 23 * * *" # 20h do Brasil (23h UTC)
+  workflow_dispatch:
+  push:
+    paths:
+      - "videos/pending/**"
+      - "upload_youtube.py"
+      - "tests/**"
 
 jobs:
-  upload:
+  test-and-upload:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout código
+      - name: Checkout repositório
         uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
       - name: Instalar dependências
         run: |
-          python3 -m pip install --upgrade pip
-          pip install requests google-auth google-auth-oauthlib google-api-python-client
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client pytest
 
-      - name: Instalar Ngrok
-        run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update
-          sudo apt install -y ngrok
+      - name: Rodar testes
+        run: pytest -v
 
-      - name: Configurar Ngrok
-        run: ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
-
-      - name: Criar pastas e vídeo de exemplo
-        run: |
-          mkdir -p videos/pending videos/posted
-          if [ ! -f videos/pending/download.mp4 ]; then
-            echo "teste" > videos/pending/download.mp4
-          fi
-
-      - name: Criar client_secret.json
-        run: |
-          echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' > client_secret.json
-
-      - name: Rodar upload YouTube
-        run: |
-          python3 upload_youtube.py
+      - name: Rodar upload (se testes passarem)
+        if: success()
+        env:
+          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
+        run: python upload_youtube.py
