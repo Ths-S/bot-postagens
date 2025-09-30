@@ -1,0 +1,33 @@
+name: Upload YouTube Automático
+
+on:
+  workflow_dispatch:
+    # manual trigger
+  schedule:
+    - cron: "0 23 * * *" # 20h Brasil / 23h UTC
+
+jobs:
+  upload_youtube:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Instalar dependências
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install google-auth google-auth-oauthlib google-api-python-client
+
+      - name: Criar client_secret.json
+        run: |
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}' > client_secret.json
+
+      - name: Criar token.pickle
+        run: |
+          # Salva o refresh token já obtido localmente como secret
+          echo '${{ secrets.YOUTUBE_TOKEN_PICKLE }}' | base64 --decode > token.pickle
+
+      - name: Rodar upload YouTube
+        run: |
+          python3 upload_youtube.py
