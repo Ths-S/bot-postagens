@@ -1,0 +1,30 @@
+name: TikTok Upload
+
+on:
+  workflow_dispatch:  # Permite rodar manualmente
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install TikTok-Api
+
+      - name: Run TikTok upload
+        env:
+          TIKTOK_SESSIONID: ${{ secrets.TIKTOK_SESSIONID }}
+          VIDEO_PATH: "videos/video.mp4"  # ajuste o caminho do vídeo no repositório
+          DESCRIPTION: "Automated upload from GitHub Actions"
+        run: |
+          python upload_tiktok_api.py
