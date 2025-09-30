@@ -82,9 +82,14 @@ def upload_one_video(driver, video_path):
     rnd_sleep(2, 4)
 
     try:
+        # Localiza o input[type=file] (mesmo que esteja escondido)
         file_input = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='file']"))
         )
+
+        # Torna visível via JS
+        driver.execute_script("arguments[0].style.display = 'block'; arguments[0].style.visibility = 'visible';", file_input)
+
         abs_path = os.path.abspath(video_path)
         file_input.send_keys(abs_path)
         rnd_sleep(5, 8)
@@ -110,6 +115,7 @@ def upload_one_video(driver, video_path):
     except Exception as e:
         print(f"[upload] failed to publish video {video_path}: {e}")
         save_debug(driver, "publish_fail")
+
 
 def main():
     if not USERNAME or not PASSWORD:
@@ -147,3 +153,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
