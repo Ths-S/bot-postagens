@@ -1,4 +1,4 @@
-name: Upload YouTube Automático
+name: Upload Shorts
 
 on:
   workflow_dispatch:
