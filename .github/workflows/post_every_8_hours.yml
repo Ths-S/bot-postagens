@@ -1,0 +1,75 @@
+name: Post Shorts & Reels every 8 hours
+
+# roda manual e em schedule
+on:
+  workflow_dispatch:
+  schedule:
+    # Horários: 06:00, 14:00, 22:00 (hora de SÃO PAULO - America/Sao_Paulo)
+    # GitHub Actions usa UTC no cron: converter para UTC => 09:00,17:00,01:00
+    - cron: '0 9,17,1 * * *'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install system deps (ngrok)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          # baixa ngrok se NGROK_AUTH_TOKEN estiver presente nas secrets
+          if [ -n "${{ secrets.NGROK_AUTH_TOKEN }}" ]; then
+            wget -q -O ngrok.zip https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+            unzip -o ngrok.zip -d $HOME/.local/bin
+            export PATH=$HOME/.local/bin:$PATH
+            which ngrok || true
+          fi
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-auth google-auth-oauthlib google-api-python-client requests
+
+      - name: Prepare credentials from secrets
+        env:
+          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          # apenas imprime quais variáveis foram fornecidas (sem mostrar valores)
+          echo "YOUTUBE_CLIENT_SECRET_JSON? ${YOUTUBE_CLIENT_SECRET_JSON:+yes}"
+          echo "YOUTUBE_TOKEN_PICKLE? ${YOUTUBE_TOKEN_PICKLE:+yes}"
+          echo "IG_ACCESS_TOKEN? ${IG_ACCESS_TOKEN:+yes}"
+          echo "IG_USER_ID? ${IG_USER_ID:+yes}"
+          echo "NGROK_AUTH_TOKEN? ${NGROK_AUTH_TOKEN:+yes}"
+
+      - name: Ensure videos folders exist
+        run: |
+          mkdir -p videos/pending videos/posted videos/failed
+
+      - name: Run poster script
+        env:
+          # YouTube
+          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
+          # Instagram
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+          # Optional caption prefix
+          CAPTION_PREFIX: ${{ secrets.CAPTION_PREFIX }}
+        run: |
+          python post_shorts_and_reels.py
