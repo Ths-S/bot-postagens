@@ -1,7 +1,7 @@
 name: TikTok Upload
 
 on:
-  workflow_dispatch:  # Permite rodar manualmente
+  workflow_dispatch:
 
 jobs:
   upload:
@@ -21,9 +21,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: List installed packages (debug)
+        run: pip list
+
       - name: Run TikTok upload
         env:
           TIKTOK_SESSIONID: ${{ secrets.TIKTOK_SESSIONID }}
-          VIDEO_PATH: "videos/video.mp4"  # ajuste o caminho do vídeo no repositório
+          VIDEO_PATH: "videos/video.mp4"
           DESCRIPTION: "Automated upload from GitHub Actions"
         run: python upload_tiktok.py
