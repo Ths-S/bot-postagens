@@ -4,7 +4,7 @@ on:
   schedule:
     # Executa às 06:00, 14:00 e 22:00 todos os dias
     - cron: "0 6,14,22 * * *"
-  workflow_dispatch: # permite rodar manualmente também
+  workflow_dispatch:
 
 jobs:
   post-videos:
@@ -33,7 +33,7 @@ jobs:
         run: |
           ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
 
-        # upload para o yt aqui
+# upload para o youtbe aqui
 
       - name: Executar upload para Instagram
         env:
@@ -43,7 +43,7 @@ jobs:
           echo "🚀 Rodando upload para Instagram"
           python upload_instagram.py
 
-      - name: Mover vídeos de pending para posted
+      - name: Mover vídeos restantes de pending para posted
         run: |
           echo "📂 Movendo vídeos processados"
           mkdir -p videos/posted
@@ -53,4 +53,3 @@ jobs:
               echo "✅ $file movido para videos/posted/"
             fi
           done
-
