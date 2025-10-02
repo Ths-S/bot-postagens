@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Instalar dependências
+      - name: Instalar dependências Python
         run: |
           python -m pip install --upgrade pip
           pip install google-auth google-auth-oauthlib google-api-python-client requests
@@ -27,7 +27,11 @@ jobs:
         run: |
           curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc > /dev/null
           echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install ngrok
+          sudo apt update && sudo apt install -y ngrok
+
+      - name: Configurar ngrok authtoken
+        run: |
+          ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
 
       - name: Executar upload para YouTube
         env:
@@ -55,4 +59,3 @@ jobs:
               echo "✅ $file movido para videos/posted/"
             fi
           done
-
