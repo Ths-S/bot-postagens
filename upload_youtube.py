@@ -1,136 +1,112 @@
 import os
-import pickle
-import base64
-import google_auth_oauthlib.flow
-import googleapiclient.discovery
-import googleapiclient.http
-from google.auth.transport.requests import Request
+import requests
+import time
+import shutil
+import subprocess
+import json
 
-VIDEO_FOLDER = "videos/pending"
-CLIENT_SECRETS_FILE = "client_secret.json"
-TOKEN_FILE = "token.pickle"
+ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
+IG_USER_ID = os.getenv("IG_USER_ID")
+CAPTION = "🚀 Postagem automática via API"
 
-
-def setup_credentials_files():
-    """Cria os arquivos de credenciais a partir das variáveis de ambiente."""
-    print("🔑 [setup_credentials_files] Iniciando configuração de credenciais...")
-
-    client_secret_json = os.getenv("YOUTUBE_CLIENT_SECRET_JSON")
-    token_pickle_b64 = os.getenv("YOUTUBE_TOKEN_PICKLE")
-
-    if not client_secret_json:
-        raise ValueError("❌ Variável YOUTUBE_CLIENT_SECRET_JSON não encontrada.")
-
-    # Salva client_secret.json
-    with open(CLIENT_SECRETS_FILE, "w") as f:
-        f.write(client_secret_json)
-    print(f"✅ client_secret.json criado em {CLIENT_SECRETS_FILE}")
-
-    # Se existir token salvo em base64, cria o token.pickle
-    if token_pickle_b64:
-        token_bytes = base64.b64decode(token_pickle_b64.encode())
-        with open(TOKEN_FILE, "wb") as f:
-            f.write(token_bytes)
-        print(f"✅ token.pickle criado em {TOKEN_FILE}")
-    else:
-        print("⚠️ Nenhum token encontrado (pode ser que precise autenticar manualmente).")
-
-    return os.path.exists(CLIENT_SECRETS_FILE), os.path.exists(TOKEN_FILE)
+PENDING_DIR = "videos/pending"
+POSTED_DIR = "videos/posted"
 
 
-def get_authenticated_service():
-    """Autentica com a API do YouTube."""
-    print("🔐 [get_authenticated_service] Autenticando com API do YouTube...")
-    scopes = ["https://www.googleapis.com/auth/youtube.upload"]
-    credentials = None
+def start_ngrok():
+    """Inicia ngrok e retorna a URL pública para o servidor local."""
+    try:
+        ngrok = subprocess.Popen(["ngrok", "http", "8000"], stdout=subprocess.PIPE)
+        time.sleep(5)  # tempo para ngrok subir
 
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "rb") as f:
-            credentials = pickle.load(f)
-        print("✅ Token carregado de token.pickle")
+        resp = requests.get("http://127.0.0.1:4040/api/tunnels").json()
+        tunnels = resp.get("tunnels", [])
+        if not tunnels:
+            raise RuntimeError("Nenhum túnel ngrok encontrado.")
 
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            print("🔄 Token expirado. Atualizando...")
-            credentials.refresh(Request())
-        else:
-            print("⚠️ Nenhum token válido. Iniciando fluxo OAuth (não funciona no GitHub Actions).")
-            flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-                CLIENT_SECRETS_FILE, scopes
-            )
-            credentials = flow.run_local_server(port=0)
-
-        with open(TOKEN_FILE, "wb") as f:
-            pickle.dump(credentials, f)
-        print("💾 Novo token salvo em token.pickle")
-
-    return googleapiclient.discovery.build("youtube", "v3", credentials=credentials)
+        return tunnels[0]["public_url"]
+    except Exception as e:
+        print("❌ Erro ao iniciar ngrok:", e)
+        return None
 
 
-def find_videos(folder=VIDEO_FOLDER):
-    """Retorna a lista de vídeos válidos em uma pasta."""
-    print(f"📂 [find_videos] Procurando vídeos na pasta: {folder}")
-    if not os.path.exists(folder):
-        print("⚠️ Pasta não encontrada.")
-        return []
-
-    videos = [
-        os.path.join(folder, f)
-        for f in os.listdir(folder)
-        if f.lower().endswith((".mp4", ".mov", ".avi", ".mkv"))
-    ]
-
-    print(f"🔍 {len(videos)} vídeo(s) encontrado(s).")
-    return videos
-
-
-def upload_video(file_path, title, description, tags=None, category_id="22", privacy="public", dry_run=False):
-    """Faz upload do vídeo (ou simula se dry_run=True)."""
-    print(f"🚀 [upload_video] Iniciando upload de: {file_path}")
-
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"❌ Arquivo não encontrado: {file_path}")
-
-    youtube = get_authenticated_service() if not dry_run else None
-
-    request_body = {
-        "snippet": {
-            "title": title,
-            "description": description,
-            "tags": tags if tags else [],
-            "categoryId": category_id,
-        },
-        "status": {
-            "privacyStatus": privacy,
-        },
+def upload_reels(video_url):
+    """Cria o contêiner de upload do Reels com video_url."""
+    url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media"
+    data = {
+        "caption": CAPTION,
+        "media_type": "REELS",
+        "video_url": video_url,
+        "access_token": ACCESS_TOKEN
     }
+    resp = requests.post(url, data=data).json()
+    return resp
 
-    if dry_run:
-        print(f"🧪 Simulação de upload: {file_path}")
-        return {"id": "SIMULATED_ID", "title": title}
 
-    media = googleapiclient.http.MediaFileUpload(file_path, chunksize=-1, resumable=True)
-    request = youtube.videos().insert(
-        part="snippet,status",
-        body=request_body,
-        media_body=media,
-    )
-    response = request.execute()
-    print("✅ Upload concluído! ID do vídeo:", response["id"])
-    return response
+def publish_reels(container_id):
+    """Publica o Reels já enviado."""
+    url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media_publish"
+    data = {
+        "creation_id": container_id,
+        "access_token": ACCESS_TOKEN
+    }
+    resp = requests.post(url, data=data).json()
+    return resp
 
 
 if __name__ == "__main__":
-    print("🚀 Script iniciado")
-    setup_credentials_files()
-    videos = find_videos()
+    if not os.path.exists(PENDING_DIR):
+        print(f"⚠️ Pasta {PENDING_DIR} não existe.")
+        exit(0)
 
-    if not videos:
-        print("⚠️ Nenhum vídeo encontrado em", VIDEO_FOLDER)
+    files = sorted(os.listdir(PENDING_DIR))  # ordem alfabética
+    print("📂 Arquivos encontrados em pending:", files)
+
+    if not files:
+        print("⚠️ Nenhum vídeo para postar.")
+        exit(0)
+
+    # pega o primeiro vídeo da lista
+    video_file = files[0]
+    video_path = os.path.join(PENDING_DIR, video_file)
+
+    if not os.path.isfile(video_path):
+        print(f"❌ Arquivo não encontrado: {video_path}")
+        exit(1)
+
+    print(f"➡️ Preparando vídeo: {video_file}")
+    print(f"📍 Caminho absoluto: {os.path.abspath(video_path)}")
+
+    # inicia servidor HTTP local para servir o vídeo
+    subprocess.Popen(["python3", "-m", "http.server", "8000", "--directory", PENDING_DIR])
+
+    base_url = start_ngrok()
+    if not base_url:
+        print("❌ Não foi possível iniciar ngrok.")
+        exit(1)
+
+    video_url = f"{base_url}/{video_file}"
+    print(f"🌍 URL pública gerada: {video_url}")
+
+    upload_resp = upload_reels(video_url)
+    print("📡 Upload response:", json.dumps(upload_resp, indent=2))
+
+    if "id" not in upload_resp:
+        print("❌ Erro no upload:", upload_resp)
+        exit(1)
+
+    container_id = upload_resp["id"]
+
+    print("⏳ Aguardando processamento...")
+    time.sleep(30)
+
+    publish_resp = publish_reels(container_id)
+    print("📡 Publish response:", json.dumps(publish_resp, indent=2))
+
+    if "id" in publish_resp:
+        os.makedirs(POSTED_DIR, exist_ok=True)
+        shutil.move(video_path, os.path.join(POSTED_DIR, video_file))
+        print(f"✅ Vídeo {video_file} postado e movido para {POSTED_DIR}")
     else:
-        upload_video(
-            file_path=videos[0],
-            title="Meu Short automático",
-            description="Publicado automaticamente via API",
-            tags=["shorts", "python", "automação"],
-        )
+        print("❌ Erro ao publicar:", publish_resp)
+        exit(1)
