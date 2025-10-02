@@ -1,9 +1,9 @@
-name: Upload Reels
+name: Upload Instagram & YouTube
 
 on:
-  workflow_dispatch: # roda manualmente
+  workflow_dispatch: # pode rodar manualmente
   schedule:
-    - cron: "0 23 * * *" # roda todo dia às 20h do Brasil (23h UTC)
+    - cron: "0 6,14,22 * * *" # a cada 8h a partir das 6h UTC-3 = 6h, 14h, 22h
 
 jobs:
   upload:
@@ -13,9 +13,14 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v3
 
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
       - name: Instalar dependências
         run: |
-          pip install requests
+          pip install requests google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
           curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
             sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
           echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | \
@@ -25,16 +30,27 @@ jobs:
       - name: Configurar Ngrok
         run: ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
 
-      - name: Criar pastas e exemplo de vídeo
-        run: |
-          mkdir -p videos/pending videos/posted
-          # Se não tiver vídeo, cria um falso só para testar
-          if [ ! -f videos/pending/download.mp4 ]; then
-            echo "teste" > videos/pending/download.mp4
-          fi
+      - name: Criar pastas
+        run: mkdir -p videos/pending videos/posted
 
-      - name: Rodar script de upload
+      - name: Upload para Instagram
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
         run: python3 upload_instagram.py
+
+      - name: Upload para YouTube
+        env:
+          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
+        run: python3 upload_youtube.py
+
+      - name: Mover vídeo postado
+        run: |
+          file=$(ls videos/pending | sort | head -n 1)
+          if [ -n "$file" ]; then
+            mv "videos/pending/$file" "videos/posted/$file"
+            echo "✅ Arquivo $file movido para videos/posted/"
+          else
+            echo "⚠️ Nenhum arquivo para mover."
+          fi
