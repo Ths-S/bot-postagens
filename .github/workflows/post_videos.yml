@@ -2,9 +2,8 @@ name: Post Reels & Shorts (scheduled)
 
 on:
   schedule:
-    # GitHub Actions usa UTC. Horários desejados no Brasil (BRT -03:00): 06:00, 14:00, 22:00
-    # Convertendo para UTC: 09:00, 17:00, 01:00 -> lista 1,9,17 hora UTC
-    - cron: '0 1,9,17 * * *'   # 01:00, 09:00, 17:00 UTC == 22:00, 06:00, 14:00 BRT
+    # Horários UTC: 01:00, 09:00, 17:00
+    - cron: '0 1,9,17 * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -24,16 +23,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-api-python-client google-auth google-auth-oauthlib requests
 
-      - name: Download ngrok (stable)
+      - name: Install ngrok
         run: |
-          # Baixa ngrok e coloca no PATH
-          NGROK_VERSION="4.0.0" || true
           wget -q -O ngrok.zip https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
           unzip -q ngrok.zip -d $HOME/ngrok
           sudo mv $HOME/ngrok/ngrok /usr/local/bin/ngrok
           ngrok version
 
-      - name: Ensure directories exist
+      - name: Start ngrok background
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: |
+          echo "[INFO] Configurando ngrok..."
+          ngrok authtoken $NGROK_AUTHTOKEN
+          nohup ngrok http 8000 --log=stdout > ngrok.log 2>&1 &
+          sleep 10
+          cat ngrok.log
+
+      - name: Prepare folders
         run: |
           mkdir -p videos/pending videos/posted
 
@@ -41,10 +48,8 @@ jobs:
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
           HTTP_SERVER_PORT: "8000"
-
           YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
-          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }} # Opcional: base64 do token.pickle
+          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
         run: |
           python3 post_all.py
