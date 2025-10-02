@@ -2,9 +2,7 @@ name: Post Reels & Shorts (scheduled)
 
 on:
   schedule:
-    # GitHub Actions usa UTC. Horários no Brasil (BRT -03:00): 06:00, 14:00, 22:00
-    # Convertido para UTC: 09:00, 17:00, 01:00
-    - cron: '0 1,9,17 * * *'
+    - cron: '0 1,9,17 * * *'  # UTC
   workflow_dispatch: {}
 
 jobs:
@@ -31,14 +29,17 @@ jobs:
           sudo mv $HOME/ngrok/ngrok /usr/local/bin/ngrok
           ngrok version
 
-      - name: Start ngrok background
+      - name: Start ngrok
         env:
           NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
         run: |
           ngrok authtoken $NGROK_AUTHTOKEN
           nohup ngrok http 8000 --log=stdout > ngrok.log 2>&1 &
+          echo "Aguardando ngrok iniciar..."
           sleep 10
-          cat ngrok.log
+          NGROK_URL=$(curl --silent http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+          echo "Ngrok público: $NGROK_URL"
+          echo "NGROK_URL=$NGROK_URL" >> $GITHUB_ENV
 
       - name: Prepare folders
         run: |
@@ -51,5 +52,6 @@ jobs:
           HTTP_SERVER_PORT: "8000"
           YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
           YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
+          NGROK_URL: ${{ env.NGROK_URL }}
         run: |
           python3 post_all.py
