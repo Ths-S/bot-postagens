@@ -23,6 +23,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-auth google-auth-oauthlib google-api-python-client requests
 
+      - name: Instalar ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc > /dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install ngrok
+
       - name: Executar upload para YouTube
         env:
           YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
@@ -49,3 +55,4 @@ jobs:
               echo "✅ $file movido para videos/posted/"
             fi
           done
+
