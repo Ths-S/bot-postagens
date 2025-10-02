@@ -33,13 +33,7 @@ jobs:
         run: |
           ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
 
-      - name: Executar upload para YouTube
-        env:
-          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
-          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
-        run: |
-          echo "🚀 Rodando upload para YouTube"
-          python upload_youtube.py
+        # upload para o yt aqui
 
       - name: Executar upload para Instagram
         env:
@@ -59,3 +53,4 @@ jobs:
               echo "✅ $file movido para videos/posted/"
             fi
           done
+
