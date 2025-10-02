@@ -1,7 +1,6 @@
 import os
 import requests
 import time
-import shutil
 import subprocess
 
 ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
@@ -9,39 +8,30 @@ IG_USER_ID = os.getenv("IG_USER_ID")
 CAPTION = "🚀 Postagem automática via API"
 
 PENDING_DIR = "videos/pending"
-POSTED_DIR = "videos/posted"
 
 
 def start_ngrok():
     """Inicia ngrok e retorna a URL pública"""
     ngrok = subprocess.Popen(["ngrok", "http", "8000"], stdout=subprocess.PIPE)
-    time.sleep(5)  # tempo para o ngrok subir
-
-    try:
-        url = requests.get("http://127.0.0.1:4040/api/tunnels").json()["tunnels"][0]["public_url"]
-        return url
-    except Exception as e:
-        print("❌ Erro ao iniciar ngrok:", e)
-        exit(1)
+    time.sleep(5)
+    url = requests.get("http://127.0.0.1:4040/api/tunnels").json()["tunnels"][0]["public_url"]
+    return url
 
 
 def upload_reels(video_url):
     url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media"
     data = {
-        'caption': CAPTION,
-        'media_type': 'REELS',
-        'video_url': video_url,
-        'access_token': ACCESS_TOKEN
+        "caption": CAPTION,
+        "media_type": "REELS",
+        "video_url": video_url,
+        "access_token": ACCESS_TOKEN,
     }
     return requests.post(url, data=data).json()
 
 
 def publish_reels(container_id):
     url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media_publish"
-    data = {
-        'creation_id': container_id,
-        'access_token': ACCESS_TOKEN
-    }
+    data = {"creation_id": container_id, "access_token": ACCESS_TOKEN}
     return requests.post(url, data=data).json()
 
 
@@ -51,7 +41,7 @@ if __name__ == "__main__":
         exit(0)
 
     files = sorted(os.listdir(PENDING_DIR))
-    print("📂 Arquivos encontrados em pending:", files)
+    print("📂 Arquivos encontrados:", files)
 
     if not files:
         print("⚠️ Nenhum vídeo para postar.")
@@ -65,13 +55,12 @@ if __name__ == "__main__":
         exit(1)
 
     print(f"➡️ Preparando vídeo: {video_file}")
-    print(f"📍 Caminho absoluto: {os.path.abspath(video_path)}")
 
-    # inicia servidor HTTP local para servir os vídeos
+    # Servidor HTTP local para servir os vídeos
     subprocess.Popen(["python3", "-m", "http.server", "8000", "--directory", PENDING_DIR])
     base_url = start_ngrok()
     video_url = f"{base_url}/{video_file}"
-    print(f"🌍 URL pública gerada: {video_url}")
+    print(f"🌍 URL pública: {video_url}")
 
     upload_resp = upload_reels(video_url)
     print("Upload response:", upload_resp)
@@ -86,11 +75,7 @@ if __name__ == "__main__":
         print("Publish response:", publish_resp)
 
         if "id" in publish_resp:
-            src = os.path.join(PENDING_DIR, video_file)
-            dst = os.path.join(POSTED_DIR, video_file)
-            os.makedirs(POSTED_DIR, exist_ok=True)
-            shutil.move(src, dst)
-            print(f"✅ Vídeo {video_file} postado e movido para {POSTED_DIR}")
+            print(f"✅ Vídeo {video_file} postado com sucesso no Instagram.")
         else:
             print("❌ Erro ao publicar:", publish_resp)
     else:
