@@ -2,7 +2,8 @@ name: Post Reels & Shorts (scheduled)
 
 on:
   schedule:
-    # Horários UTC: 01:00, 09:00, 17:00
+    # GitHub Actions usa UTC. Horários no Brasil (BRT -03:00): 06:00, 14:00, 22:00
+    # Convertido para UTC: 09:00, 17:00, 01:00
     - cron: '0 1,9,17 * * *'
   workflow_dispatch: {}
 
@@ -34,7 +35,6 @@ jobs:
         env:
           NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
         run: |
-          echo "[INFO] Configurando ngrok..."
           ngrok authtoken $NGROK_AUTHTOKEN
           nohup ngrok http 8000 --log=stdout > ngrok.log 2>&1 &
           sleep 10
