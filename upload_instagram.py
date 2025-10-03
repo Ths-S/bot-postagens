@@ -2,10 +2,10 @@ import os
 import requests
 import time
 import subprocess
+import json
 
 ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
 IG_USER_ID = os.getenv("IG_USER_ID")
-CAPTION = "🚀 Postagem automática via API"
 
 PENDING_DIR = "videos/pending"
 
@@ -18,10 +18,18 @@ def start_ngrok():
     return url
 
 
-def upload_reels(video_url):
+def get_metadata(video_file):
+    if os.path.exists("metadata.json"):
+        with open("metadata.json", "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+        return metadata.get(video_file, {})
+    return {}
+
+
+def upload_reels(video_url, caption):
     url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media"
     data = {
-        "caption": CAPTION,
+        "caption": caption,
         "media_type": "REELS",
         "video_url": video_url,
         "access_token": ACCESS_TOKEN,
@@ -54,7 +62,10 @@ if __name__ == "__main__":
         print(f"❌ Arquivo não encontrado: {video_path}")
         exit(1)
 
-    print(f"➡️ Preparando vídeo: {video_file}")
+    meta = get_metadata(video_file)
+    caption = meta.get("description", "🚀 Postagem automática via API")
+
+    print(f"➡️ Preparando vídeo: {video_file} | Legenda: {caption}")
 
     # Servidor HTTP local para servir os vídeos
     subprocess.Popen(["python3", "-m", "http.server", "8000", "--directory", PENDING_DIR])
@@ -62,7 +73,7 @@ if __name__ == "__main__":
     video_url = f"{base_url}/{video_file}"
     print(f"🌍 URL pública: {video_url}")
 
-    upload_resp = upload_reels(video_url)
+    upload_resp = upload_reels(video_url, caption)
     print("Upload response:", upload_resp)
 
     if "id" in upload_resp:

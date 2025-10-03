@@ -5,6 +5,7 @@ import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.http
 from google.auth.transport.requests import Request
+import json
 
 VIDEO_FOLDER = "videos/pending"
 CLIENT_SECRETS_FILE = "client_secret.json"
@@ -61,6 +62,14 @@ def find_videos(folder=VIDEO_FOLDER):
     return videos
 
 
+def get_metadata(video_file):
+    if os.path.exists("metadata.json"):
+        with open("metadata.json", "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+        return metadata.get(video_file, {})
+    return {}
+
+
 def upload_video(file_path, title, description, tags=None, category_id="22", privacy="public"):
     youtube = get_authenticated_service()
     request_body = {
@@ -86,9 +95,16 @@ if __name__ == "__main__":
     if not videos:
         print("⚠️ Nenhum vídeo encontrado em", VIDEO_FOLDER)
     else:
+        video_file = os.path.basename(videos[0])
+        meta = get_metadata(video_file)
+
+        title = meta.get("title", "Meu Short automático")
+        description = meta.get("description", "Publicado automaticamente via API")
+        tags = meta.get("tags", ["shorts", "python", "automação"])
+
         upload_video(
             file_path=videos[0],
-            title="Meu Short automático",
-            description="Publicado automaticamente via API",
-            tags=["shorts", "python", "automação"],
+            title=title,
+            description=description,
+            tags=tags,
         )
