@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -55,11 +57,21 @@ jobs:
             echo "⚠️ Nenhum arquivo para mover."
           fi
 
-      - name: Commit mudanças (mover vídeo postado)
+      - name: Commit mudanças no repositório
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add videos/posted/*
-          git rm videos/pending/* || true
-          git commit -m "Movendo vídeo postado para posted"
-          git push
+
+          # Adiciona mudanças
+          git add videos/pending/ || true
+          git add videos/posted/ || true
+
+          # Só commita se houver mudanças
+          if ! git diff --cached --quiet; then
+            git commit -m "📦 Mover vídeo postado automaticamente"
+            git push
+            echo "✅ Mudanças enviadas para o repositório."
+          else
+            echo "⚠️ Nenhuma mudança para commitar."
+          fi
+a
