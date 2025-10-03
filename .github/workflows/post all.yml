@@ -54,3 +54,12 @@ jobs:
           else
             echo "⚠️ Nenhum arquivo para mover."
           fi
+
+      - name: Commit mudanças (mover vídeo postado)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add videos/posted/*
+          git rm videos/pending/* || true
+          git commit -m "Movendo vídeo postado para posted"
+          git push
