@@ -38,6 +38,18 @@ jobs:
       - name: Criar pastas
         run: mkdir -p videos/pending videos/posted
 
+      - name: Upload para Instagram
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: python3 upload_instagram.py
+
+      - name: Upload para YouTube
+        env:
+          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
+        run: python3 upload_youtube.py
+
       - name: Mover vídeo postado
         run: |
           file=$(ls videos/pending | sort | head -n 1)
