@@ -74,4 +74,3 @@ jobs:
           else
             echo "⚠️ Nenhuma mudança para commitar."
           fi
-a
