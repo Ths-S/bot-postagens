@@ -54,12 +54,11 @@ def get_authenticated_service():
 def find_videos(folder=VIDEO_FOLDER):
     if not os.path.exists(folder):
         return []
-    videos = [
+    return [
         os.path.join(folder, f)
         for f in sorted(os.listdir(folder))
         if f.lower().endswith((".mp4", ".mov", ".avi", ".mkv"))
     ]
-    return videos
 
 
 def get_metadata(video_file):
@@ -98,8 +97,9 @@ if __name__ == "__main__":
         video_file = os.path.basename(videos[0])
         meta = get_metadata(video_file)
 
-        title = meta.get("title", "Meu Short automático")
-        description = meta.get("description", "Publicado automaticamente via API")
+        # Permite editar o título e descrição
+        title = meta.get("title", input("✏️ Título do vídeo: ") or "Meu Short automático")
+        description = meta.get("description", input("📝 Descrição do vídeo: ") or "Publicado automaticamente via API")
         tags = meta.get("tags", ["shorts", "python", "automação"])
 
         upload_video(

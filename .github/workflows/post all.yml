@@ -1,12 +1,9 @@
 name: Upload Instagram & YouTube
 
 on:
-  workflow_dispatch: # pode rodar manualmente
+  workflow_dispatch:
   schedule:
-    - cron: "0 6,14,22 * * *" # a cada 8h a partir das 6h UTC-3 = 6h, 14h, 22h
-
-permissions:
-  contents: write   # 🔑 permite commit e push no repositório
+    - cron: "0 6,14,22 * * *"  # a cada 8h (06h, 14h, 22h UTC-3)
 
 jobs:
   upload:
@@ -14,64 +11,26 @@ jobs:
 
     steps:
       - name: Checkout código
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/checkout@v4
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
+      - name: Configura Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Instalar dependências
+      - name: Instala dependências
         run: |
-          pip install requests google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
-            sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | \
-            sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install -y ngrok
+          python -m pip install --upgrade pip
+          pip install google-auth-oauthlib google-api-python-client requests
 
-      - name: Configurar Ngrok
-        run: ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
-
-      - name: Criar pastas
-        run: mkdir -p videos/pending videos/posted
-
-      - name: Upload para Instagram
+      - name: Upload Instagram
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
         run: python3 upload_instagram.py
 
-      - name: Upload para YouTube
+      - name: Upload YouTube
         env:
           YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
           YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
         run: python3 upload_youtube.py
-
-      - name: Mover vídeo postado
-        run: |
-          file=$(ls videos/pending | sort | head -n 1)
-          if [ -n "$file" ]; then
-            mv "videos/pending/$file" "videos/posted/$file"
-            echo "✅ Arquivo $file movido para videos/posted/"
-          else
-            echo "⚠️ Nenhum arquivo para mover."
-          fi
-
-      - name: Commit mudanças no repositório
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add videos/pending/ || true
-          git add videos/posted/ || true
-
-          if ! git diff --cached --quiet; then
-            git commit -m "📦 Mover vídeo postado automaticamente"
-            git push origin HEAD:${GITHUB_REF}
-            echo "✅ Mudanças enviadas para o repositório."
-          else
-            echo "⚠️ Nenhuma mudança para commitar."
-          fi

@@ -37,6 +37,13 @@ def upload_reels(video_url, caption):
     return requests.post(url, data=data).json()
 
 
+def check_status(container_id):
+    """Verifica o status do processamento do vídeo"""
+    status_url = f"https://graph.facebook.com/v20.0/{container_id}?fields=status_code&access_token={ACCESS_TOKEN}"
+    response = requests.get(status_url).json()
+    return response.get("status_code", "")
+
+
 def publish_reels(container_id):
     url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media_publish"
     data = {"creation_id": container_id, "access_token": ACCESS_TOKEN}
@@ -67,7 +74,6 @@ if __name__ == "__main__":
 
     print(f"➡️ Preparando vídeo: {video_file} | Legenda: {caption}")
 
-    # Servidor HTTP local para servir os vídeos
     subprocess.Popen(["python3", "-m", "http.server", "8000", "--directory", PENDING_DIR])
     base_url = start_ngrok()
     video_url = f"{base_url}/{video_file}"
@@ -78,9 +84,18 @@ if __name__ == "__main__":
 
     if "id" in upload_resp:
         container_id = upload_resp["id"]
-
         print("⏳ Aguardando processamento...")
-        time.sleep(30)
+
+        # Espera até status FINISHED
+        for _ in range(30):
+            status = check_status(container_id)
+            print(f"🔁 Status atual: {status}")
+            if status == "FINISHED":
+                break
+            time.sleep(10)
+        else:
+            print("❌ Tempo limite atingido, vídeo não processado.")
+            exit(1)
 
         publish_resp = publish_reels(container_id)
         print("Publish response:", publish_resp)
