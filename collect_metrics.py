@@ -1,117 +1,67 @@
-# collect_metrics.py
 import os
 import json
-import time
-import requests
 from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import pickle
 
-YOUTUBE_OAUTH_JSON = os.getenv("YOUTUBE_OAUTH_JSON")  # <-- GitHub Secret (conteúdo JSON)
-IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
-IG_USER_ID = os.getenv("IG_USER_ID")
-
+# Pasta e arquivos
 os.makedirs("data", exist_ok=True)
-metrics_path = "data/metrics.json"
+METRICS_PATH = "data/metrics.json"
+CLIENT_SECRETS_FILE = "client_secret.json"
+TOKEN_FILE = "token.pickle"
 
+# Escopos do YouTube
 SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
 
-def load_credentials_from_env():
-    """
-    Espera um JSON com: token, refresh_token, token_uri, client_id, client_secret, scopes
-    (o mesmo que o script generate_youtube_oauth_json imprime).
-    """
-    if not YOUTUBE_OAUTH_JSON:
-        return None
-    try:
-        info = json.loads(YOUTUBE_OAUTH_JSON)
-    except Exception as e:
-        print("Erro ao parsear YOUTUBE_OAUTH_JSON:", e)
-        return None
-
-    creds = Credentials(
-        token=info.get("token"),
-        refresh_token=info.get("refresh_token"),
-        token_uri=info.get("token_uri"),
-        client_id=info.get("client_id"),
-        client_secret=info.get("client_secret"),
-        scopes=info.get("scopes", SCOPES),
-    )
-
-    # Se token expirado, tenta refresh automaticamente
-    if creds and creds.expired and creds.refresh_token:
-        try:
-            creds.refresh(Request())
-            # opcional: você pode exportar o novo token atualizado para logs (cuidado com segredos)
-        except Exception as e:
-            print("Falha ao atualizar token:", e)
-    return creds
+# Salva o secret do GitHub em client_secret.json se não existir
+if not os.path.exists(CLIENT_SECRETS_FILE):
+    oauth_json = os.getenv("YOUTUBE_OAUTH_JSON")
+    if not oauth_json:
+        raise Exception("YOUTUBE_OAUTH_JSON não encontrado nos Secrets do GitHub!")
+    with open(CLIENT_SECRETS_FILE, "w") as f:
+        f.write(oauth_json)
 
 def get_youtube_service():
-    creds = load_credentials_from_env()
-    if not creds:
-        raise RuntimeError("Nenhuma credencial do YouTube encontrada. Configure YOUTUBE_OAUTH_JSON no GitHub Secrets.")
-    service = build("youtube", "v3", credentials=creds)
-    return service
+    creds = None
+    # Verifica se já existe token
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "rb") as token:
+            creds = pickle.load(token)
+
+    # Se não tiver credenciais válidas, faz login
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
+            creds = flow.run_local_server(port=0)
+
+        # Salva o token para a próxima vez
+        with open(TOKEN_FILE, "wb") as token:
+            pickle.dump(creds, token)
+
+    return build("youtube", "v3", credentials=creds)
 
 def get_youtube_metrics():
-    youtube = get_youtube_service()
-
-    # Exemplo: pegar vídeos curtidos (myRating requires OAuth) - isto retorna uma lista de vídeos "like"
-    request = youtube.videos().list(part="snippet,statistics", myRating="like", maxResults=50)
-    response = request.execute()
-
-    metrics = []
-    for item in response.get("items", []):
-        stats = item.get("statistics", {})
-        snippet = item.get("snippet", {})
-        metrics.append({
-            "title": snippet.get("title"),
-            "publishedAt": snippet.get("publishedAt"),
-            "views": int(stats.get("viewCount", 0)),
-            "likes": int(stats.get("likeCount", 0)),
-            "comments": int(stats.get("commentCount", 0)),
-            "videoId": item.get("id"),
-        })
-    return metrics
-
-def get_instagram_metrics():
-    if not IG_ACCESS_TOKEN or not IG_USER_ID:
-        print("IG_ACCESS_TOKEN ou IG_USER_ID não configurados. Pulando Instagram.")
-        return []
-    url = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media?fields=id,caption,like_count,comments_count,media_type,media_url,permalink,timestamp&access_token={IG_ACCESS_TOKEN}"
-    resp = requests.get(url)
     try:
-        data = resp.json()
-    except Exception:
-        print("Resposta inválida do Instagram:", resp.text)
-        return []
+        service = get_youtube_service()
+        request = service.channels().list(part="statistics", mine=True)
+        response = request.execute()
+        return response
+    except Exception as e:
+        print(f"Erro ao coletar métricas do YouTube: {e}")
+        return {}
 
-    metrics = []
-    for item in data.get("data", []):
-        metrics.append({
-            "caption": item.get("caption"),
-            "likes": item.get("like_count"),
-            "comments": item.get("comments_count"),
-            "timestamp": item.get("timestamp"),
-            "permalink": item.get("permalink"),
-        })
-    return metrics
+def save_metrics(metrics):
+    with open(METRICS_PATH, "w") as f:
+        json.dump(metrics, f, indent=2)
+    print(f"✅ Métricas salvas em {METRICS_PATH}")
 
 def main():
     print("📊 Coletando métricas...")
-    try:
-        youtube_data = get_youtube_metrics()
-    except Exception as e:
-        print("Erro ao coletar métricas do YouTube:", e)
-        youtube_data = []
-
-    insta_data = get_instagram_metrics()
-
-    all_data = {"youtube": youtube_data, "instagram": insta_data, "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-    with open(metrics_path, "w", encoding="utf-8") as f:
-        json.dump(all_data, f, indent=2, ensure_ascii=False)
-    print("✅ Métricas salvas em data/metrics.json")
+    youtube_data = get_youtube_metrics()
+    save_metrics({"youtube": youtube_data})
 
 if __name__ == "__main__":
     main()
