@@ -1,56 +1,76 @@
 import os
 import json
+import base64
 import pickle
+from datetime import datetime
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 
-# Pasta e arquivos
+# === Caminho do arquivo de saída ===
 os.makedirs("data", exist_ok=True)
-METRICS_PATH = "data/metrics.json"
-TOKEN_FILE = "token.pickle"
+metrics_path = "data/metrics.json"
 
-# Salva token do GitHub Secret em token.pickle
-if not os.path.exists(TOKEN_FILE):
-    token_base64 = os.getenv("TOKEN_PICKLE_COMPLETE")
-    if not token_base64:
-        raise Exception("TOKEN_PICKLE_COMPLETE não encontrado nos Secrets do GitHub!")
-    import base64
-    with open(TOKEN_FILE, "wb") as f:
-        f.write(base64.b64decode(token_base64))
+
+def log(msg):
+    print(f"📊 {msg}")
+
 
 def get_youtube_service():
-    creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "rb") as token:
-            creds = pickle.load(token)
+    """Lê o token do GitHub Secrets e inicializa o serviço da API YouTube"""
+    token_b64 = os.getenv("TOKEN_PICKLE_COMPLETE")
 
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            raise Exception("Token inválido ou expirado e não é possível atualizar automaticamente no Actions.")
+    if not token_b64:
+        raise Exception("❌ TOKEN_PICKLE_COMPLETE não encontrado nos Secrets do GitHub!")
+
+    # Decodifica o token para arquivo temporário
+    token_bytes = base64.b64decode(token_b64)
+    with open("token_temp.pickle", "wb") as f:
+        f.write(token_bytes)
+
+    with open("token_temp.pickle", "rb") as token_file:
+        creds = pickle.load(token_file)
+
+    # Renova o token se necessário
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
 
     return build("youtube", "v3", credentials=creds)
 
-def get_youtube_metrics():
-    try:
-        service = get_youtube_service()
-        request = service.channels().list(part="statistics", mine=True)
-        response = request.execute()
-        return response
-    except Exception as e:
-        print(f"Erro ao coletar métricas do YouTube: {e}")
-        return {}
 
-def save_metrics(metrics):
-    with open(METRICS_PATH, "w") as f:
-        json.dump(metrics, f, indent=2)
-    print(f"✅ Métricas salvas em {METRICS_PATH}")
+def get_youtube_metrics():
+    """Obtém estatísticas do canal YouTube"""
+    youtube = get_youtube_service()
+    request = youtube.channels().list(part="statistics", mine=True)
+    response = request.execute()
+
+    stats = response["items"][0]["statistics"]
+    return {
+        "viewCount": int(stats.get("viewCount", 0)),
+        "subscriberCount": int(stats.get("subscriberCount", 0)),
+        "videoCount": int(stats.get("videoCount", 0)),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
 
 def main():
-    print("📊 Coletando métricas...")
-    youtube_data = get_youtube_metrics()
-    save_metrics({"youtube": youtube_data})
+    log("Coletando métricas...")
+
+    try:
+        youtube_data = get_youtube_metrics()
+    except Exception as e:
+        log(f"Erro ao coletar métricas do YouTube: {e}")
+        youtube_data = {}
+
+    # Junta tudo num dicionário
+    metrics = {"youtube": youtube_data}
+
+    # Salva no arquivo JSON
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=4)
+
+    log("✅ Métricas salvas com sucesso!")
+    print(f"📁 Caminho completo: {os.path.abspath(metrics_path)}")
+
 
 if __name__ == "__main__":
     main()
