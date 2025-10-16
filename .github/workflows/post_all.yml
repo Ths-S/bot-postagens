@@ -12,7 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
+    - name: Install ngrok
+      run: |
+        curl -s https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz
+        sudo mv ngrok /usr/local/bin
+        ngrok version
+    
+      - name: Setup Python1
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
@@ -20,12 +26,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib requests openai
-
-      - name: Upload to YouTube
-        env:
-          YOUTUBE_CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
-          YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
-        run: python3 upload_youtube.py
+    
+      # Upload youtube
 
       - name: Upload to Instagram
         env:
