@@ -12,11 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-    - name: Install ngrok
-      run: |
-        curl -s https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz
-        sudo mv ngrok /usr/local/bin
-        ngrok version
+      - name: Install ngrok
+        run: |
+          curl -s https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz
+          sudo mv ngrok /usr/local/bin
+          ngrok version
     
       - name: Setup Python1
         uses: actions/setup-python@v5
