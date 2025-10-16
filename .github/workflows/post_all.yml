@@ -33,11 +33,11 @@ jobs:
     
       # Upload youtube
 
-      - name: Upload to Instagram
-        env:
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
-        run: python3 upload_instagram.py
+#      - name: Upload to Instagram
+#        env:
+#          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+#          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+#        run: python3 upload_instagram.py
 
       - name: Collect Metrics
         env:
