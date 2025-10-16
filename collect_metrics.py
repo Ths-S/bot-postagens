@@ -4,6 +4,8 @@ import datetime
 import requests
 from googleapiclient.discovery import build
 import pickle
+import base64
+
 
 # Caminhos
 os.makedirs("data", exist_ok=True)
