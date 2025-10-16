@@ -17,7 +17,11 @@ jobs:
           curl -s https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz
           sudo mv ngrok /usr/local/bin
           ngrok version
-    
+            
+      - name: Autentica ngrok
+        run: ngrok config add-authtoken ${{ secrets.NGROK_AUTHTOKEN }}
+
+
       - name: Setup Python1
         uses: actions/setup-python@v5
         with:
