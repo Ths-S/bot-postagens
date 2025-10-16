@@ -74,3 +74,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+import subprocess
+
+def git_commit_metrics():
+    subprocess.run(["git", "config", "--global", "user.name", "github-actions"], check=True)
+    subprocess.run(["git", "config", "--global", "user.email", "actions@github.com"], check=True)
+    subprocess.run(["git", "add", "data/metrics.json"], check=True)
+    subprocess.run(["git", "commit", "-m", "Atualiza métricas do YouTube"], check=False)
+    subprocess.run(["git", "push"], check=False)
+
+git_commit_metrics()
