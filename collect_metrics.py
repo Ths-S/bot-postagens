@@ -1,45 +1,34 @@
 import os
 import json
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 import pickle
+from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
 
 # Pasta e arquivos
 os.makedirs("data", exist_ok=True)
 METRICS_PATH = "data/metrics.json"
-CLIENT_SECRETS_FILE = "client_secret.json"
 TOKEN_FILE = "token.pickle"
 
-# Escopos do YouTube
-SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
-
-# Salva o secret do GitHub em client_secret.json se não existir
-if not os.path.exists(CLIENT_SECRETS_FILE):
-    oauth_json = os.getenv("YOUTUBE_OAUTH_JSON")
-    if not oauth_json:
-        raise Exception("YOUTUBE_OAUTH_JSON não encontrado nos Secrets do GitHub!")
-    with open(CLIENT_SECRETS_FILE, "w") as f:
-        f.write(oauth_json)
+# Salva token do GitHub Secret em token.pickle
+if not os.path.exists(TOKEN_FILE):
+    token_base64 = os.getenv("YOUTUBE_TOKEN_PICKLE")
+    if not token_base64:
+        raise Exception("YOUTUBE_TOKEN_PICKLE não encontrado nos Secrets do GitHub!")
+    import base64
+    with open(TOKEN_FILE, "wb") as f:
+        f.write(base64.b64decode(token_base64))
 
 def get_youtube_service():
     creds = None
-    # Verifica se já existe token
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, "rb") as token:
             creds = pickle.load(token)
 
-    # Se não tiver credenciais válidas, faz login
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-
-        # Salva o token para a próxima vez
-        with open(TOKEN_FILE, "wb") as token:
-            pickle.dump(creds, token)
+            raise Exception("Token inválido ou expirado e não é possível atualizar automaticamente no Actions.")
 
     return build("youtube", "v3", credentials=creds)
 
