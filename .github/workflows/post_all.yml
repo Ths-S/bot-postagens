@@ -47,10 +47,13 @@ jobs:
           YOUTUBE_OAUTH_JSON: ${{ secrets.YOUTUBE_OAUTH_JSON }}
           YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
           TOKEN_PICKLE_COMPLETE: ${{ secrets.TOKEN_PICKLE_COMPLETE }}
-
-
-
         run: python3 collect_metrics.py
+
+      - name: Upload metrics.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics
+          path: data/metrics.json
 
       - name: Analyze and Apply AI Suggestions
         env:
