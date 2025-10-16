@@ -46,7 +46,7 @@ jobs:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           YOUTUBE_OAUTH_JSON: ${{ secrets.YOUTUBE_OAUTH_JSON }}
           YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
-          TOCKEN_PICKLE_COMPLETE: ${{ secrets.TOCKEN_PICKLE_COMPLETE }}
+          TOCKEN_PICKLE_COMPLETE: ${{ secrets.TOKEN_PICKLE_COMPLETE }}
 
 
 
