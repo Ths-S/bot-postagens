@@ -1,12 +1,52 @@
 {
-  "202510012209 (1).mp4": {
-    "title": "🔥 Dica rápida para você aplicar hoje!",
-    "description": "Publicado automaticamente via API. #produtividade #shorts",
-    "tags": ["shorts", "produtividade", "dica"]
+  "gancho1": {
+    "title": "🚨 Ninguém te contou isso ainda…",
+    "description": "Descobri algo que muda tudo — olha o link da bio ou o link fixado nos comentários antes que apaguem.",
+    "tags": ["descubra", "linknabio", "linkfixado", "segredo", "urgente", "confira"]
   },
-  "202510012209 (2).mp4": {
-    "title": "💡 Hack de programação em Python",
-    "description": "Automatizando tarefas com Python! #python #shorts",
-    "tags": ["python", "automação", "shorts"]
+  "gancho2": {
+    "title": "😳 Eu não devia mostrar isso aqui...",
+    "description": "Se ainda estiver disponível, tá no link da bio ou fixado nos comentários. Corre antes que tirem do ar.",
+    "tags": ["proibido", "descubra", "linknabio", "linkfixado", "exclusivo", "chocante"]
+  },
+  "gancho3": {
+    "title": "🔥 Pouca gente sabe disso (mas funciona!)",
+    "description": "Não vou explicar aqui... entra no link da bio ou no link fixado e vê com os próprios olhos.",
+    "tags": ["segredo", "linknabio", "linkfixado", "funciona", "curioso", "novidade"]
+  },
+  "gancho4": {
+    "title": "💰 Parece brincadeira, mas é real!",
+    "description": "Só quem clicar no link da bio ou nos comentários vai entender o porquê disso estar viralizando.",
+    "tags": ["dinheiro", "linknabio", "linkfixado", "viral", "descubra", "impacto"]
+  },
+  "gancho5": {
+    "title": "😱 Tá todo mundo comentando isso agora…",
+    "description": "Se ainda não viu, olha o link da bio ou o link fixado antes que acabe o estoque.",
+    "tags": ["trend", "urgente", "viral", "linknabio", "linkfixado", "exclusivo"]
+  },
+  "gancho6": {
+    "title": "👀 Você vai entender só depois que ver o link.",
+    "description": "Não é o que parece... mas é exatamente o que você precisa ver hoje. Link da bio ou link fixado 👇",
+    "tags": ["mistério", "linknabio", "linkfixado", "descubra", "curioso"]
+  },
+  "gancho7": {
+    "title": "⚡ Isso aqui tá sendo removido em vários lugares…",
+    "description": "Se ainda estiver no ar, o link da bio ou fixado te leva direto pra fonte.",
+    "tags": ["proibido", "linknabio", "linkfixado", "exclusivo", "confira", "urgente"]
+  },
+  "gancho8": {
+    "title": "🤯 É simples, mas ninguém faz isso…",
+    "description": "Olha o link da bio ou o link fixado e me agrade depois.",
+    "tags": ["segredo", "descubra", "linknabio", "linkfixado", "simples", "efetivo"]
+  },
+  "gancho9": {
+    "title": "💡 Eu testei sem esperar nada… e olha no que deu!",
+    "description": "Explico tudo no link da bio ou no link fixado (antes que tirem do ar).",
+    "tags": ["descubra", "linknabio", "linkfixado", "resultado", "exclusivo"]
+  },
+  "gancho10": {
+    "title": "🚀 Isso tá viralizando por um motivo…",
+    "description": "Se quiser entender, o link da bio ou fixado é o caminho. Mas vê logo.",
+    "tags": ["viral", "linknabio", "linkfixado", "descubra", "urgente", "trend"]
   }
 }
