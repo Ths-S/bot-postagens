@@ -6,10 +6,12 @@ import googleapiclient.discovery
 import googleapiclient.http
 from google.auth.transport.requests import Request
 import json
+import random
 
 VIDEO_FOLDER = "videos/pending"
 CLIENT_SECRETS_FILE = "client_secret.json"
 TOKEN_FILE = "token.pickle"
+METADATA_FILE = "metadata.json"
 
 
 def setup_credentials_files():
@@ -54,19 +56,20 @@ def get_authenticated_service():
 def find_videos(folder=VIDEO_FOLDER):
     if not os.path.exists(folder):
         return []
-    videos = [
+    return [
         os.path.join(folder, f)
         for f in sorted(os.listdir(folder))
         if f.lower().endswith((".mp4", ".mov", ".avi", ".mkv"))
     ]
-    return videos
 
 
-def get_metadata(video_file):
-    if os.path.exists("metadata.json"):
-        with open("metadata.json", "r", encoding="utf-8") as f:
+def get_metadata():
+    if os.path.exists(METADATA_FILE):
+        with open(METADATA_FILE, "r", encoding="utf-8") as f:
             metadata = json.load(f)
-        return metadata.get(video_file, {})
+        # Escolhe um gancho aleatório
+        key = random.choice(list(metadata.keys()))
+        return metadata[key]
     return {}
 
 
@@ -95,9 +98,7 @@ if __name__ == "__main__":
     if not videos:
         print("⚠️ Nenhum vídeo encontrado em", VIDEO_FOLDER)
     else:
-        video_file = os.path.basename(videos[0])
-        meta = get_metadata(video_file)
-
+        meta = get_metadata()
         title = meta.get("title", "Meu Short automático")
         description = meta.get("description", "Publicado automaticamente via API")
         tags = meta.get("tags", ["shorts", "python", "automação"])

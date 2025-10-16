@@ -45,7 +45,7 @@ def get_instagram_metrics():
             "timestamp": item.get("timestamp"),
             "permalink": item.get("permalink"),
         })
-    return metrics5
+    return metrics
 
 def main():
     print("📊 Coletando métricas...")

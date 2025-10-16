@@ -3,11 +3,12 @@ import requests
 import time
 import subprocess
 import json
+import random
 
 ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
 IG_USER_ID = os.getenv("IG_USER_ID")
-
 PENDING_DIR = "videos/pending"
+METADATA_FILE = "metadata.json"
 
 
 def start_ngrok():
@@ -18,11 +19,12 @@ def start_ngrok():
     return url
 
 
-def get_metadata(video_file):
-    if os.path.exists("metadata.json"):
-        with open("metadata.json", "r", encoding="utf-8") as f:
+def get_metadata():
+    if os.path.exists(METADATA_FILE):
+        with open(METADATA_FILE, "r", encoding="utf-8") as f:
             metadata = json.load(f)
-        return metadata.get(video_file, {})
+        key = random.choice(list(metadata.keys()))
+        return metadata[key]
     return {}
 
 
@@ -62,7 +64,7 @@ if __name__ == "__main__":
         print(f"❌ Arquivo não encontrado: {video_path}")
         exit(1)
 
-    meta = get_metadata(video_file)
+    meta = get_metadata()
     caption = meta.get("description", "🚀 Postagem automática via API")
 
     print(f"➡️ Preparando vídeo: {video_file} | Legenda: {caption}")
