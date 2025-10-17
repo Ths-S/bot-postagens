@@ -12,6 +12,7 @@ VIDEO_FOLDER = "videos/pending"
 CLIENT_SECRETS_FILE = "client_secret.json"
 TOKEN_FILE = "token.pickle"
 METADATA_FILE = "metadata.json"
+GANCHO_FILE = "gancho_data.json"
 
 
 def setup_credentials_files():
@@ -63,14 +64,23 @@ def find_videos(folder=VIDEO_FOLDER):
     ]
 
 
-def get_metadata():
+def load_gancho_data():
+    if not os.path.exists(GANCHO_FILE):
+        raise FileNotFoundError("❌ Arquivo gancho_data.json não encontrado!")
+    with open(GANCHO_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_metadata():
     if os.path.exists(METADATA_FILE):
         with open(METADATA_FILE, "r", encoding="utf-8") as f:
-            metadata = json.load(f)
-        # Escolhe um gancho aleatório
-        key = random.choice(list(metadata.keys()))
-        return metadata[key]
+            return json.load(f)
     return {}
+
+
+def save_metadata(metadata):
+    with open(METADATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=4, ensure_ascii=False)
 
 
 def upload_video(file_path, title, description, tags=None, category_id="22", privacy="public"):
@@ -84,6 +94,7 @@ def upload_video(file_path, title, description, tags=None, category_id="22", pri
         },
         "status": {"privacyStatus": privacy},
     }
+
     media = googleapiclient.http.MediaFileUpload(file_path, chunksize=-1, resumable=True)
     request = youtube.videos().insert(part="snippet,status", body=request_body, media_body=media)
     response = request.execute()
@@ -94,18 +105,33 @@ def upload_video(file_path, title, description, tags=None, category_id="22", pri
 if __name__ == "__main__":
     setup_credentials_files()
     videos = find_videos()
+    gancho_data = load_gancho_data()
+    metadata = load_metadata()
 
     if not videos:
         print("⚠️ Nenhum vídeo encontrado em", VIDEO_FOLDER)
     else:
-        meta = get_metadata()
-        title = meta.get("title", "Meu Short automático")
-        description = meta.get("description", "Publicado automaticamente via API")
-        tags = meta.get("tags", ["shorts", "python", "automação"])
+        # Escolhe vídeo e gancho aleatoriamente
+        video_path = videos[0]
+        video_name = os.path.basename(video_path)
+        gancho_name = random.choice(list(gancho_data.keys()))
+        gancho = gancho_data[gancho_name]
 
-        upload_video(
-            file_path=videos[0],
-            title=title,
-            description=description,
-            tags=tags,
+        # Realiza upload
+        response = upload_video(
+            file_path=video_path,
+            title=gancho["title"],
+            description=gancho["description"],
+            tags=gancho["tags"],
         )
+
+        video_id = response.get("id")
+
+        # Salva no metadata.json
+        metadata[video_name] = {
+            "gancho": gancho_name,
+            "youtube_id": video_id,
+        }
+
+        save_metadata(metadata)
+        print(f"📁 Metadata atualizado com ID do vídeo ({video_id}) e gancho {gancho_name}.")
