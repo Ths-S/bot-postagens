@@ -82,6 +82,17 @@ def get_instagram_metrics(metadata):
 
     return insta_metrics
 
+def get_youtube_service():
+    token_pickle_data = os.getenv("TOKEN_PICKLE_COMPLETE")
+    if not token_pickle_data:
+        raise Exception("TOKEN_PICKLE_COMPLETE não encontrado!")
+
+    import pickle, base64
+    token_pickle_bytes = pickle.loads(base64.b64decode(token_pickle_data))
+    from googleapiclient.discovery import build
+    return build("youtube", "v3", credentials=token_pickle_bytes)
+
+
 # =======================
 # 🔹 FUNÇÃO PRINCIPAL
 # =======================
