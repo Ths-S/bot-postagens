@@ -20,24 +20,18 @@ IG_USER_ID = os.getenv("IG_USER_ID")
 # =======================
 # 🔹 FUNÇÕES DO YOUTUBE
 # =======================
-def get_youtube_service():
-    token_pickle_data = os.getenv("TOKEN_PICKLE_COMPLETE")
-    if not token_pickle_data:
-        raise Exception("TOKEN_PICKLE_COMPLETE não encontrado!")
-    token_pickle_bytes = pickle.loads(base64.b64decode(token_pickle_data))
-    return build("youtube", "v3", credentials=token_pickle_bytes)
-
 def get_youtube_metrics(youtube, metadata):
     channel_stats = youtube.channels().list(part="statistics", mine=True).execute()
     channel_data = channel_stats["items"][0]["statistics"]
 
-    # Dados de vídeos individuais
+    # Dados de vídeos individuais por gancho
     video_metrics = []
-    for filename, info in metadata.items():
+    for gancho_nome, info in metadata.items():
         title = info.get("title", "")
-        video_id = info.get("youtube_id")  # Adicione isso ao metadata.json se quiser vincular direto
+        video_id = info.get("youtube_id")  # precisa existir no metadata.json
+
         if not video_id:
-            continue
+            continue  # ignora ganchos sem vídeo associado
 
         res = youtube.videos().list(part="statistics", id=video_id).execute()
         if "items" not in res or len(res["items"]) == 0:
@@ -45,11 +39,12 @@ def get_youtube_metrics(youtube, metadata):
 
         stats = res["items"][0]["statistics"]
         video_metrics.append({
+            "gancho": gancho_nome,  # nome do gancho (gancho1, gancho2, etc.)
             "title": title,
             "video_id": video_id,
             "views": int(stats.get("viewCount", 0)),
             "likes": int(stats.get("likeCount", 0)),
-            "comments": int(stats.get("commentCount", 0)),
+            "comments": int(stats.get("commentCount", 0))
         })
 
     return {
