@@ -61,10 +61,9 @@ def get_youtube_metrics(youtube, metadata):
 def get_instagram_metrics(metadata):
     print("📸 Coletando métricas do Instagram...")
 
-    # Campos adicionais do Graph API
     fields = (
         "id,caption,media_type,media_url,thumbnail_url,timestamp,"
-        "permalink,like_count,comments_count,children"
+        "permalink,like_count,comments_count,children{media_url,media_type}"
     )
     url = f"https://graph.instagram.com/{IG_USER_ID}/media?fields={fields}&access_token={GRAPH_API_TOKEN}"
 
@@ -72,14 +71,18 @@ def get_instagram_metrics(metadata):
         r = requests.get(url)
         data = r.json()
     except Exception as e:
-        print("Erro ao acessar a API do Instagram:", e)
+        print("❌ Erro ao acessar a API do Instagram:", e)
         return {"summary": {}, "posts": []}
 
     if "error" in data:
-        print("Erro retornado pela API:", data["error"])
+        print("❌ Erro retornado pela API:", data["error"])
         return {"summary": {}, "posts": []}
 
     posts = data.get("data", [])
+    if not posts:
+        print("⚠️ Nenhum post encontrado. Verifique GRAPH_API_TOKEN e IG_USER_ID.")
+        return {"summary": {}, "posts": []}
+
     insta_metrics = []
     total_likes = total_comments = 0
 
@@ -105,7 +108,7 @@ def get_instagram_metrics(metadata):
             "timestamp": post.get("timestamp"),
             "likes": like_count,
             "comments": comments_count,
-            "children": post.get("children", {}),
+            "children": post.get("children", {}).get("data", []),
             "matched_metadata": match
         })
 
