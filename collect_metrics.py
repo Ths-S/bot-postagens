@@ -15,7 +15,7 @@ metadata_path = "metadata.json"
 # Variáveis de ambiente (GitHub Secrets)
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 GRAPH_API_TOKEN = os.getenv("GRAPH_API_TOKEN")
-IG_USER_ID = os.getenv("z")
+IG_USER_ID = os.getenv("IG_USER_ID")
 
 # =======================
 # 🔹 FUNÇÕES DO YOUTUBE

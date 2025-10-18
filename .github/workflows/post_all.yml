@@ -47,6 +47,7 @@ jobs:
           YOUTUBE_OAUTH_JSON: ${{ secrets.YOUTUBE_OAUTH_JSON }}
           YOUTUBE_TOKEN_PICKLE: ${{ secrets.YOUTUBE_TOKEN_PICKLE }}
           TOKEN_PICKLE_COMPLETE: ${{ secrets.TOKEN_PICKLE_COMPLETE }}
+          GRAPH_API_TOKEN: ${{ secrets.GRAPH_API_TOKEN }}
         run: python3 collect_metrics.py
 
       - name: Upload metrics.json
