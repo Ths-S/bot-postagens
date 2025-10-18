@@ -5,7 +5,7 @@ import requests
 from googleapiclient.discovery import build
 import pickle
 import base64
-
+import subprocess
 
 # Caminhos
 os.makedirs("data", exist_ok=True)
@@ -14,7 +14,7 @@ metadata_path = "metadata.json"
 
 # Variáveis de ambiente (GitHub Secrets)
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
+GRAPH_API_TOKEN = os.getenv("GRAPH_API_TOKEN")
 IG_USER_ID = os.getenv("IG_USER_ID")
 
 # =======================
@@ -24,14 +24,12 @@ def get_youtube_metrics(youtube, metadata):
     channel_stats = youtube.channels().list(part="statistics", mine=True).execute()
     channel_data = channel_stats["items"][0]["statistics"]
 
-    # Dados de vídeos individuais por gancho
     video_metrics = []
     for gancho_nome, info in metadata.items():
         title = info.get("title", "")
-        video_id = info.get("youtube_id")  # precisa existir no metadata.json
-
+        video_id = info.get("youtube_id")
         if not video_id:
-            continue  # ignora ganchos sem vídeo associado
+            continue
 
         res = youtube.videos().list(part="statistics", id=video_id).execute()
         if "items" not in res or len(res["items"]) == 0:
@@ -39,7 +37,7 @@ def get_youtube_metrics(youtube, metadata):
 
         stats = res["items"][0]["statistics"]
         video_metrics.append({
-            "gancho": gancho_nome,  # nome do gancho (gancho1, gancho2, etc.)
+            "gancho": gancho_nome,
             "title": title,
             "video_id": video_id,
             "views": int(stats.get("viewCount", 0)),
@@ -61,40 +59,78 @@ def get_youtube_metrics(youtube, metadata):
 # 🔹 FUNÇÕES DO INSTAGRAM
 # =======================
 def get_instagram_metrics(metadata):
-    url = f"https://graph.instagram.com/{IG_USER_ID}/media?fields=id,caption,media_type,permalink,like_count,comments_count&access_token={IG_ACCESS_TOKEN}"
-    r = requests.get(url)
-    data = r.json()
+    print("📸 Coletando métricas do Instagram...")
 
+    # Campos adicionais do Graph API
+    fields = (
+        "id,caption,media_type,media_url,thumbnail_url,timestamp,"
+        "permalink,like_count,comments_count,children"
+    )
+    url = f"https://graph.instagram.com/{IG_USER_ID}/media?fields={fields}&access_token={GRAPH_API_TOKEN}"
+
+    try:
+        r = requests.get(url)
+        data = r.json()
+    except Exception as e:
+        print("Erro ao acessar a API do Instagram:", e)
+        return {"summary": {}, "posts": []}
+
+    if "error" in data:
+        print("Erro retornado pela API:", data["error"])
+        return {"summary": {}, "posts": []}
+
+    posts = data.get("data", [])
     insta_metrics = []
-    if "data" in data:
-        for post in data["data"]:
-            caption = post.get("caption", "")
-            like_count = post.get("like_count", 0)
-            comments_count = post.get("comments_count", 0)
-            match = next((v for k, v in metadata.items() if caption.strip() in v.get("description", "")), None)
-            insta_metrics.append({
-                "id": post["id"],
-                "caption": caption,
-                "likes": like_count,
-                "comments": comments_count,
-                "matched_metadata": match
-            })
+    total_likes = total_comments = 0
 
-    return insta_metrics
+    for post in posts:
+        caption = post.get("caption", "")
+        like_count = post.get("like_count", 0)
+        comments_count = post.get("comments_count", 0)
+        total_likes += like_count
+        total_comments += comments_count
 
+        match = next(
+            (v for k, v in metadata.items() if caption and caption.strip() in v.get("description", "")),
+            None
+        )
+
+        insta_metrics.append({
+            "id": post.get("id"),
+            "caption": caption,
+            "media_type": post.get("media_type"),
+            "media_url": post.get("media_url"),
+            "thumbnail_url": post.get("thumbnail_url"),
+            "permalink": post.get("permalink"),
+            "timestamp": post.get("timestamp"),
+            "likes": like_count,
+            "comments": comments_count,
+            "children": post.get("children", {}),
+            "matched_metadata": match
+        })
+
+    summary = {
+        "totalPosts": len(insta_metrics),
+        "totalLikes": total_likes,
+        "totalComments": total_comments,
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+    }
+
+    return {"summary": summary, "posts": insta_metrics}
+
+# =======================
+# 🔹 AUTENTICAÇÃO YOUTUBE
+# =======================
 def get_youtube_service():
     token_pickle_data = os.getenv("TOKEN_PICKLE_COMPLETE")
     if not token_pickle_data:
         raise Exception("TOKEN_PICKLE_COMPLETE não encontrado!")
 
-    import pickle, base64
     token_pickle_bytes = pickle.loads(base64.b64decode(token_pickle_data))
-    from googleapiclient.discovery import build
     return build("youtube", "v3", credentials=token_pickle_bytes)
 
-
 # =======================
-# 🔹 FUNÇÃO PRINCIPAL
+# 🔹 EXECUÇÃO PRINCIPAL
 # =======================
 def main():
     print("📊 Coletando métricas...")
@@ -122,14 +158,14 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-import subprocess
-
+# =======================
+# 🔹 COMMIT AUTOMÁTICO
+# =======================
 def git_commit_metrics():
     subprocess.run(["git", "config", "--global", "user.name", "github-actions"], check=True)
     subprocess.run(["git", "config", "--global", "user.email", "actions@github.com"], check=True)
     subprocess.run(["git", "add", "data/metrics.json"], check=True)
-    subprocess.run(["git", "commit", "-m", "Atualiza métricas do YouTube"], check=False)
+    subprocess.run(["git", "commit", "-m", "Atualiza métricas do YouTube e Instagram"], check=False)
     subprocess.run(["git", "push"], check=False)
 
 git_commit_metrics()
