@@ -61,68 +61,86 @@ def get_youtube_metrics(youtube, metadata):
 def get_instagram_metrics(metadata):
     print("📸 Coletando métricas do Instagram...")
 
-    base_url = "https://graph.facebook.com"
-    fields = (
-        "id,caption,media_type,media_url,thumbnail_url,timestamp,"
-        "permalink,like_count,comments_count,children{media_url,media_type}"
-    )
-    url = f"{base_url}/{IG_USER_ID}/media?fields={fields}&access_token={GRAPH_API_TOKEN}"
+    base_url = "https://graph.facebook.com/v20.0"
+    token = GRAPH_API_TOKEN
+    user_id = IG_USER_ID
 
-    all_posts = []
+    # 1️⃣ Coleta todos os IDs das postagens (com paginação)
+    post_ids = []
+    url = f"{base_url}/{user_id}/media?access_token={token}"
+
     try:
-        # 🔁 Paginação — busca todas as páginas
         while url:
             r = requests.get(url)
             data = r.json()
 
             if "error" in data:
                 print("❌ Erro retornado pela API:", data["error"])
-                break
+                return {"summary": {}, "posts": []}
 
-            posts = data.get("data", [])
-            all_posts.extend(posts)
+            batch = data.get("data", [])
+            post_ids.extend([p["id"] for p in batch if "id" in p])
 
-            # Verifica se há próxima página
-            url = data.get("paging", {}).get("next")
+            url = data.get("paging", {}).get("next")  # próxima página
 
+        if not post_ids:
+            print("⚠️ Nenhum ID de post encontrado. Verifique GRAPH_API_TOKEN e IG_USER_ID.")
+            return {"summary": {}, "posts": []}
+
+        print(f"📄 {len(post_ids)} IDs de posts coletados.")
     except Exception as e:
-        print("❌ Erro ao acessar a API do Instagram:", e)
+        print("❌ Erro ao coletar IDs de posts:", e)
         return {"summary": {}, "posts": []}
 
-    if not all_posts:
-        print("⚠️ Nenhum post encontrado. Verifique GRAPH_API_TOKEN e IG_USER_ID.")
-        return {"summary": {}, "posts": []}
-
+    # 2️⃣ Coleta dados de cada post individualmente
     insta_metrics = []
     total_likes = total_comments = 0
 
-    for post in all_posts:
-        caption = post.get("caption", "")
-        like_count = post.get("like_count", 0)
-        comments_count = post.get("comments_count", 0)
-        total_likes += like_count
-        total_comments += comments_count
+    fields = (
+        "id,caption,media_type,media_url,thumbnail_url,timestamp,"
+        "permalink,like_count,comments_count,children{media_url,media_type}"
+    )
 
-        # tenta associar o post com metadados existentes
-        match = next(
-            (v for k, v in metadata.items() if caption and caption.strip() in v.get("description", "")),
-            None
-        )
+    for post_id in post_ids:
+        try:
+            res = requests.get(f"{base_url}/{post_id}?fields={fields}&access_token={token}")
+            post = res.json()
 
-        insta_metrics.append({
-            "id": post.get("id"),
-            "caption": caption,
-            "media_type": post.get("media_type"),
-            "media_url": post.get("media_url"),
-            "thumbnail_url": post.get("thumbnail_url"),
-            "permalink": post.get("permalink"),
-            "timestamp": post.get("timestamp"),
-            "likes": like_count,
-            "comments": comments_count,
-            "children": post.get("children", {}).get("data", []),
-            "matched_metadata": match
-        })
+            if "error" in post:
+                print(f"⚠️ Erro ao buscar dados do post {post_id}: {post['error']}")
+                continue
 
+            caption = post.get("caption", "")
+            like_count = int(post.get("like_count", 0))
+            comments_count = int(post.get("comments_count", 0))
+            total_likes += like_count
+            total_comments += comments_count
+
+            # Tenta associar com metadados locais
+            match = next(
+                (v for k, v in metadata.items() if caption and caption.strip() in v.get("description", "")),
+                None
+            )
+
+            insta_metrics.append({
+                "id": post_id,
+                "caption": caption,
+                "media_type": post.get("media_type"),
+                "media_url": post.get("media_url"),
+                "thumbnail_url": post.get("thumbnail_url"),
+                "permalink": post.get("permalink"),
+                "timestamp": post.get("timestamp"),
+                "likes": like_count,
+                "comments": comments_count,
+                "children": post.get("children", {}).get("data", []),
+                "matched_metadata": match
+            })
+
+        except Exception as e:
+            print(f"⚠️ Falha ao coletar post {post_id}: {e}")
+            continue
+
+    # 3️⃣ Resumo geral
     summary = {
         "totalPosts": len(insta_metrics),
         "totalLikes": total_likes,
@@ -130,8 +148,7 @@ def get_instagram_metrics(metadata):
         "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
     }
 
-    print(f"✅ Coletados {len(insta_metrics)} posts do Instagram.")
-
+    print(f"✅ Coletados {len(insta_metrics)} posts do Instagram com sucesso.")
     return {"summary": summary, "posts": insta_metrics}
 
 
