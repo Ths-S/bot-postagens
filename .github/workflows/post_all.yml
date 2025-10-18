@@ -55,15 +55,9 @@ jobs:
           name: metrics
           path: data/metrics.json
 
-      - name: Analyze and Apply AI Suggestions
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python3 analyze_metrics.py
-
-      - name: Upload metrics.json
-        uses: actions/upload-artifact@v4
-        with:
-          name: metrics
-          path: data/metrics.json
+#      - name: Analyze and Apply AI Suggestions
+#        env:
+#          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+#        run: python3 analyze_metrics.py
 
 
