@@ -15,7 +15,7 @@ metadata_path = "metadata.json"
 # Variáveis de ambiente (GitHub Secrets)
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 GRAPH_API_TOKEN = os.getenv("GRAPH_API_TOKEN")
-IG_USER_ID = os.getenv("IG_USER_ID")
+IG_USER_ID = os.getenv("z")
 
 # =======================
 # 🔹 FUNÇÕES DO YOUTUBE
@@ -61,7 +61,7 @@ def get_youtube_metrics(youtube, metadata):
 def get_instagram_metrics(metadata):
     print("📸 Coletando métricas do Instagram...")
 
-    base_url = "https://graph.instagram.com"
+    base_url = "https://graph.facebook.com"
     fields = (
         "id,caption,media_type,media_url,thumbnail_url,timestamp,"
         "permalink,like_count,comments_count,children{media_url,media_type}"
